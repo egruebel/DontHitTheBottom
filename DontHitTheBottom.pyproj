@@ -41,15 +41,35 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ctd_trans.png" />
-    <Content Include="ctd.png" />
-    <Content Include="ctd_rev.svg" />
-    <Content Include="ctd_trans_v2.png" />
-    <Content Include="deepsea_bg.png" />
-    <Content Include="deepsea_bg_v2.png" />
-    <Content Include="sky_1.png" />
-    <Content Include="sky_2.png" />
-    <Content Include="sky_3.png" />
+    <Content Include="images\ctd_trans.png" />
+    <Content Include="images\ctd.png" />
+    <Content Include="images\ctd_rev.svg" />
+    <Content Include="images\ctd_trans_v2.png" />
+    <Content Include="images\deepsea_bg.png" />
+    <Content Include="images\deepsea_bg_v2.png" />
+    <Content Include="images\sky_1.png" />
+    <Content Include="images\sky_2.png" />
+    <Content Include="images\sky_3.png" />
+    <Content Include="test_casts\EN695_001_test.cnv" />
+    <Content Include="test_casts\EN695_002_test.cnv" />
+    <Content Include="test_casts\EN695_003_test.cnv" />
+    <Content Include="test_casts\EN695_004_test.cnv" />
+    <Content Include="test_casts\EN695_005_test.cnv" />
+    <Content Include="test_casts\EN695_006_test.cnv" />
+    <Content Include="test_casts\EN695_007_test.cnv" />
+    <Content Include="test_casts\EN695_008_test.cnv" />
+    <Content Include="test_casts\EN695_009_test.cnv" />
+    <Content Include="test_casts\EN695_010_test.cnv" />
+    <Content Include="test_casts\EN695_011_test.cnv" />
+    <Content Include="test_casts\EN695_012_test.cnv" />
+    <Content Include="test_casts\EN695_013_test.cnv" />
+    <Content Include="test_casts\EN695_014_test.cnv" />
+    <Content Include="test_casts\EN695_015_test.cnv" />
+    <Content Include="test_casts\EN695_016_test.cnv" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="images\" />
+    <Folder Include="test_casts\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

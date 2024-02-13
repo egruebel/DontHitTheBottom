@@ -16,9 +16,9 @@ class AppSettings:
     altimeter_sv_correction = True #correct the altimeter reading using the instantaneous sv reading from the CTD 
 
     viewport_padding_top = 14 #padding in meters at the top of the viewport
-    ctd_image = 'ctd_trans_v2.png'
-    bg_image = 'deepsea_bg_v2.png'
-    sky_image = 'sky_3.png'
+    ctd_image = 'images/ctd_trans_v2.png'
+    bg_image = 'images/deepsea_bg_v2.png'
+    sky_image = 'images/sky_3.png'
     font = "Arial"
     font_size = 32
     title = "Don't Hit the Bottom"

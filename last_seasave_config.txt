@@ -1,8 +1,0 @@
-<SBE_ConvertedDataSettings>
-<SecondsBetweenUpdates>0.250000</SecondsBetweenUpdates>
-<FieldDefinition><CalcID>72</CalcID><UnitID>-1</UnitID><Ordinal>0</Ordinal><Units></Units><FullName>Scan Count</FullName><Tag>Field0</Tag><Digits>0</Digits></FieldDefinition>
-<FieldDefinition><CalcID>12</CalcID><UnitID>58</UnitID><Ordinal>0</Ordinal><Units>S/m</Units><FullName>Conductivity [S/m]</FullName><Tag>Field1</Tag><Digits>7</Digits></FieldDefinition>
-<FieldDefinition><CalcID>2</CalcID><UnitID>33</UnitID><Ordinal>0</Ordinal><Units>Chen-Millero, m/s</Units><FullName>Average Sound Velocity [Chen-Millero, m/s]</FullName><Tag>Field2</Tag><Digits>2</Digits></FieldDefinition>
-<FieldDefinition><CalcID>17</CalcID><UnitID>31</UnitID><Ordinal>0</Ordinal><Units>salt water, m</Units><FullName>Depth [salt water, m]</FullName><Tag>Field3</Tag><Digits>3</Digits></FieldDefinition>
-<FieldDefinition><CalcID>95</CalcID><UnitID>3</UnitID><Ordinal>0</Ordinal><Units>db</Units><FullName>Pressure, Strain Gauge [db]</FullName><Tag>Field4</Tag><Digits>3</Digits></FieldDefinition>
-</SBE_ConvertedDataSettings>
