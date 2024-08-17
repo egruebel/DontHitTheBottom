@@ -31,10 +31,8 @@
     <Compile Include="seasave_serial.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="seasave_tcp.py" />
     <Compile Include="views.py" />
-    <Compile Include="castwindow.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="dont_hit_the_bottom.py" />
     <Compile Include="primitives.py">
       <SubType>Code</SubType>

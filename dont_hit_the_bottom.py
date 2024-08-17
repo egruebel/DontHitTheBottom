@@ -21,9 +21,9 @@ done = False
 ctd_depth = 0
 upcast = False
 scroll_speed = AppSettings.scroll_speed
-seabed = Seabed()
+#seabed = Seabed()
 window = ViewWindow(default_size)
-viewport = ViewPort(window, seabed)
+viewport = ViewPort(window)
 #inf = pygame.display.get_window_size()
 
 def draw_cast_history():
@@ -82,7 +82,7 @@ echo = EchoSounder(AppSettings.echosounder_udp_port, echo_callback)
 seasave = SeaSaveSerial("COM5", 9600, seasave_callback)
 
 if DEBUG:
-    seasave.start_simulate('EN695_003_test.cnv') #004 throws error, #001 is all messed up
+    seasave.start_simulate('EN695_008_test.cnv') #004 throws error, #001 is all messed up
     echo.start_simulate(seasave.debug_max_depth_of_cast + 10, .4)
     
 else:
@@ -101,6 +101,9 @@ while not done:
     #screen background
     screen.fill(Color.BLUE) #you should never see this it's behind the other bg images
     screen.blit(window.sky_image,(0,0))
+    #screen.blit(window.sky_image,(0,viewport.get_background_padding()))
+    #screen.blit(viewport.bg_image,(0,viewport.get_background_padding()))
+    #screen.blit(viewport.bg_image,(0,0))
     screen.blit(viewport.bg_image,(0,viewport.get_background_padding()))
     #screen.blit(viewport.bg_image,(0,0))
 
@@ -162,8 +165,9 @@ while not done:
     draw_cast_history()
     draw_bathy_history()
     #ctd = pygame.draw.rect(screen, GREEN, pygame.Rect((window.horizontal_center) - (ctd_width_px / 2), ctd_ypos, ctd_width_px, ctd_height_px))
-    cg = pygame.transform.scale(viewport.ctd.image_file, (viewport.ctd.width_px, viewport.ctd.height_px))
-    screen.blit(cg, ((window.horizontal_center) - (viewport.ctd.width_px / 2),ctd_ypos, viewport.ctd.width_px, viewport.ctd.height_px))
+    #cg = pygame.transform.scale(viewport.ctd.image_file, (viewport.ctd.width_px, viewport.ctd.height_px))
+    screen.blit(viewport.ctd.ctd_image_scaled, ((window.horizontal_center) - (viewport.ctd.width_px / 2),ctd_ypos, viewport.ctd.width_px, viewport.ctd.height_px))
+    #screen.blit(cg, ((window.horizontal_center) - (viewport.ctd.width_px / 2),ctd_ypos, viewport.ctd.width_px, viewport.ctd.height_px))
     
     if DEBUG:
         # show the bottom depth window
