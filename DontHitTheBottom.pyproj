@@ -11,6 +11,9 @@
     <OutputPath>.</OutputPath>
     <Name>DontHitTheBottom</Name>
     <RootNamespace>DontHitTheBottom</RootNamespace>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <Environment>PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT = 5</Environment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

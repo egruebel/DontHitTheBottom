@@ -25,8 +25,9 @@ class EchoSounder:
             self.callback("echosounder simulation: " + str(self.depth))
         return
             
-    def start_simulate(self, start_depth_m, rand_coeff):
+    def start_simulate(self, start_depth_m, start_sv, rand_coeff):
         self.depth = start_depth_m
+        self.sound_velocity = start_sv
         x = threading.Thread(target=self.sim, args = (rand_coeff,))
         x.start()
         
