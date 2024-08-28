@@ -28,11 +28,11 @@ class CTD:
         self.altimeter_default_sound_velocity = AppSettings.altimeter_default_sv
         #self.altimeter_valid = False
         self.altimeter_correction = AppSettings.altimeter_sv_correction
-        self.ctd_image = pygame.image.load(AppSettings.ctd_image).convert_alpha()
-        self.ctd_image_scaled = pygame.image.load(AppSettings.ctd_image).convert_alpha()
+        self.image = pygame.image.load(AppSettings.ctd_image).convert_alpha()
+        self.image_scaled = pygame.image.load(AppSettings.ctd_image).convert_alpha()
         
 
-    def resize_ctd(self, px_per_meter):
+    def resize(self, px_per_meter):
         #img_height_px = self.ctd_image.get_height()
         #assume ctd is 2m/6ft because that's what they usually are
         ctd_height_m = 3
@@ -42,7 +42,7 @@ class CTD:
         #img_height_px_corrected = img_height_px / ctd_height_m
         self.height_px = ih
         self.width_px = ih * .6
-        self.ctd_image_scaled = pygame.transform.scale(self.ctd_image, (self.width_px, self.height_px))
+        self.image_scaled = pygame.transform.scale(self.image, (self.width_px, self.height_px))
         #self.ctd_image_scaled = pygame.transform.rotate(self.ctd_image_scaled, 20)
 
 

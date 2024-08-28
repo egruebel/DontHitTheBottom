@@ -3,6 +3,7 @@ from app_settings import AppSettings
 from enum import Enum
 
 FONT = pygame.font.SysFont(AppSettings.font, AppSettings.font_size)
+LITTLEFONT = pygame.font.SysFont(AppSettings.font, int(AppSettings.font_size / 2))
 
 class Color():
     ORANGE = [255, 150, 50]
@@ -16,7 +17,7 @@ class Color():
     YELLOW = [255, 255, 153]
     
 
-def render_text(text, x_pos, y_pos, color, screen):
+def render_text(text, x_pos, y_pos, color, screen, little = False):
     vertical_offset = 0
     #lines = text.splitlines()
     if not isinstance(text, list):
