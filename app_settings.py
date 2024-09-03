@@ -1,12 +1,11 @@
 
 class AppSettings:
     initial_water_depth = 500 #default water depth when application is started before any inputs from CTD or echosounder
-    altitude_triplines = [700, 400, 250, 40] #highest to lowest altitude (altitude not depth)
     tripline_jitter_m = 6 #prevents flapping by raising/lowering the tripline by x meters once the ctd has passed
     bottom_window_m = 30 #the altitude from the bottom where the display is fully zoomed in for situational awareness
     bottom_padding_coefficient = .1 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
     horizontal_center = .7 #where the CTD is shown in relation to the left side of the screen in %
-    surface_padding = .10 #size of the sky at the surface in %
+    surface_padding = .05 #size of the sky at the surface in %
     
     ctd_min_height_px = 18 #otherwise CTD will appear teeny tiny during deep casts of 6000m or greater due to auto scaling
         
@@ -26,6 +25,7 @@ class AppSettings:
     default_screen_size = [900,800] #width, height
     frame_rate = 200 #milliseconds between frames
     scroll_speed = .05
+    animate_transitions = True
     
     echosounder_udp_port = 16008 #16008 for Endeavor
     echosounder_default_sv = 1500 #sound velocity in meters/sec

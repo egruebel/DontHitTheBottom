@@ -17,19 +17,20 @@ class Color():
     YELLOW = [255, 255, 153]
     
 
-def render_text(text, x_pos, y_pos, color, screen, little = False):
+def render_text(text, x_pos, y_pos, color, screen, font_adjust = 0):
     vertical_offset = 0
     #lines = text.splitlines()
     if not isinstance(text, list):
         text = [text]
-    s = FONT.size(text[0]) #width, height
+    f = pygame.font.SysFont(AppSettings.font, AppSettings.font_size + font_adjust)
+    s = f.size(text[0]) #width, height
     w_max = 0
     for line in text:
-        w = FONT.size(line)[0]
+        w = f.size(line)[0]
         w_max = w if (w > w_max) else w_max #get the max width of the lines
-        lbl = FONT.render(line, True, color)
+        lbl = f.render(line, True, color)
         screen.blit (lbl, (x_pos, y_pos + vertical_offset))
-        vertical_offset += AppSettings.font_size #s[1]
+        vertical_offset += AppSettings.font_size + font_adjust
     return ((w_max, s[1]))
 
 def float2str(num):

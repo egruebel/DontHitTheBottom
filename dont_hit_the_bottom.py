@@ -22,8 +22,8 @@ ctd_depth = 0
 upcast = False
 scroll_speed = AppSettings.scroll_speed
 window = ViewWindow(default_size)
-viewport = ViewPort(window, CTD()) #todo make the instrument configurable in the AppSettings
-viewengine = ViewEngine(viewport, CTD())
+viewengine = ViewEngine(window)
+viewport = viewengine.viewport
 
 def draw_cast_history():
     while (window.horizontal_center / scroll_speed) < len(viewengine.instrument.history):
@@ -84,7 +84,8 @@ seasave = SeaSaveSerial("COM5", 9600, seasave_callback)
 
 if DEBUG:
     #005 is deep with altim issue
-    seasave.start_simulate('EN695_004_test.cnv') #004 throws error, #001 is all messed up, 007 has flapping issue on upcast, 008 has weird padding
+    #008 shallow with tripline adjustment issue on upcast
+    seasave.start_simulate('EN695_001_test.cnv') #004 throws error, #001 is all messed up, 007 has flapping issue on upcast, 008 has weird padding
     echo.start_simulate(seasave.debug_max_depth_of_cast + 10, 1500, .4)
     
 else:
@@ -104,7 +105,11 @@ while not done:
 
     #screen background
     screen.fill(Color.BLUE) #you should never see this it's behind the other bg images
+    while(viewport.sky_image.get_locked()):
+        next
     screen.blit(viewport.sky_image,(0,0))
+    while(viewport.bg_image.get_locked()):
+        next
     screen.blit(viewport.bg_image,(0, viewport.get_background_padding()))
 
     #for testing only
@@ -142,17 +147,11 @@ while not done:
             if(tl > viewengine.instrument.depth):
 
                 tripline_y_pos = viewport.get_ypos_px(tl)
-                #pygame.draw.line(screen, Color.YELLOW, (0, tripline_y_pos), (window.width_px, tripline_y_pos), 1)
-                #trip_label = "m from bottom"
                 draw_horizontal_line(screen, tripline_y_pos, Color.YELLOW, 60)
                 #next_depth = viewport.triplines.get_next_tripline_depth(viewport.instrument.depth)
-                trip_label_a = float2str(viewengine.seabed.water_depth - tl) + "m from bottom"
+                trip_label_a = str(int(viewengine.seabed.water_depth - tl)) + "m from bottom"
                 trip_label_b = str(tl) + "m deep"
-                render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen)
-        #warntext_a = FONT.render(trip_label_a, True, Color.YELLOW)
-        #warntext_b = FONT.render(trip_label_b, True, Color.YELLOW)
-        #screen.blit (warntext_a, (0, tripline_y_pos))
-        #screen.blit (warntext_b, (0, tripline_y_pos + AppSettings.font_size))
+                render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -10)
 
     wd = FONT.render(float2str(viewengine.instrument.depth) + 'm', True, Color.LIGHTBLUE)
     screen.blit(wd, ((window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos))
