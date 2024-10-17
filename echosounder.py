@@ -31,7 +31,7 @@ class EchoSounder:
         x = threading.Thread(target=self.sim, args = (rand_coeff,))
         x.start()
         
-    def connect(self):
+    def connect(self, viewengine):
         self.client.bind(("", self.port))
         self.client.setblocking(0)
         data =''
@@ -48,12 +48,14 @@ class EchoSounder:
                     self.keel_depth = float(s[8])
                     self.sound_velocity = int(s[9].replace('\\r\\n\'',''))
                     self.callback(data)
+                    viewengine.set_water_depth(self.depth)
                 except:
                     print("Exception in echosounder.py")
                     for a in e.args:
                         print(a)
             time.sleep(1)
 
-    def start_receive(self):
-        x = threading.Thread(target=self.connect)
+    def start_receive(self, viewengine):
+        #self.viewengine = viewengine
+        x = threading.Thread(target=self.connect, args = (viewengine,))
         x.start()

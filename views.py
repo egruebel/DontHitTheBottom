@@ -20,6 +20,7 @@ class ViewWindow:
         self.horizontal_center = self.width_px * AppSettings.horizontal_center
         self.bg_image = pygame.image.load(AppSettings.bg_image).convert()
         self.sky_image = pygame.image.load(AppSettings.sky_image).convert()
+        self.ship_image = pygame.image.load(AppSettings.ship_image).convert_alpha()
         
     def resize(self, window_size_px): #called when the pygame window is resized by user
         self.height_px = window_size_px[1]
@@ -69,6 +70,7 @@ class ViewPort:
         self.screen_bottom_meters = initial_bottom
         self.bg_image = self.window.bg_image
         self.sky_image = self.window.sky_image
+        self.ship_image = self.window.ship_image
         self.height_meters = initial_bottom - initial_top
         self.instrument = instrument
         self.thread_lock = False
@@ -145,6 +147,10 @@ class ViewPort:
         #copy and scale the raw sky image to the surface padding area (meters at the top of the screen)
         if(self.screen_top_meters <= 0):
             self.sky_image = pygame.transform.scale(self.window.sky_image, (self.window.width_px, window_px_per_meter * abs(self.screen_top_meters)))
+        #scale the ship image
+        if(self.screen_top_meters <= 0):
+            sw = self.px_per_meter * self.window.ship_image.get_width() * .07
+            self.ship_image = pygame.transform.scale(self.window.ship_image, (sw, sw * .6))
 
     def get_background_padding(self):
         if (self.screen_top_meters <= 0):
@@ -177,7 +183,7 @@ class ViewEngine:
             water_depth_m = self.instrument.depth + self.instrument.altitude
         else:
             #altimeter is not active use echosounder
-            if(AppSettings.echosounder_sv_correction):
+            if(AppSettings.echosounder_sv_correction and self.instrument.depth > water_depth_m / 2):
                 water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity
                 self.seabed.depth_corrected = True
 
@@ -266,7 +272,7 @@ class Triplines:
    
     @staticmethod
     def get_surface_padding(water_depth_m):
-        return int(water_depth_m * AppSettings.surface_padding * -1)
+        return int(water_depth_m * AppSettings.surface_padding_coefficient * -1)
 
     def get_last_tripline_depth(self, instrument_depth_m):
         trip = 0

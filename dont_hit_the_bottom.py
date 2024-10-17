@@ -10,13 +10,15 @@ from views import *
 
 #constants
 DEBUG = True
-
-#pygame variables
 default_size = AppSettings.default_screen_size
 screen = pygame.display.set_mode(default_size, pygame.RESIZABLE)
 pygame.display.set_caption(AppSettings.title)
 clock = pygame.time.Clock()
 done = False
+
+#set the icon
+dhtb_icon = pygame.image.load('images/dhtb_icon_t.png')
+pygame.display.set_icon(dhtb_icon)
 
 ctd_depth = 0
 upcast = False
@@ -24,6 +26,9 @@ scroll_speed = AppSettings.scroll_speed
 window = ViewWindow(default_size)
 viewengine = ViewEngine(window)
 viewport = viewengine.viewport
+
+#calling this resize event on startup makes sure that images are scaled and placed correctly before data acquisition
+viewport.resize()
 
 def draw_cast_history():
     while (window.horizontal_center / scroll_speed) < len(viewengine.instrument.history):
@@ -36,6 +41,8 @@ def draw_cast_history():
         pygame.draw.circle(screen, Color.BLUE, (x,y), 1)
 
 def draw_bathy_history():
+    if not viewengine.seabed.history:
+        return
     while (window.horizontal_center / scroll_speed) < len(viewengine.seabed.history):
       viewengine.seabed.history.pop(0)
     h_length = len(viewengine.seabed.history)
@@ -60,7 +67,7 @@ def draw_bathy_history():
         h_val = viewengine.seabed.history[i][2] # depth value
         y = viewport.get_ypos_px(h_val)
         x += scroll_speed
-        thk = 3 if h_corr else 2 #fatter circle if corrected
+        thk = 3 if h_corr else 3 #fatter circle if corrected
         col = Color.ORANGE if (h_src == 1) else Color.ORANGE3
         
         pygame.draw.circle(screen, col, (x,y), 2)
@@ -68,9 +75,12 @@ def draw_bathy_history():
     
     text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_lower_threshold - (viewengine.seabed.water_depth_lower_threshold - viewengine.seabed.water_depth_upper_threshold))
     text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold + (viewengine.seabed.depth_padding/2))
+    #text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth)
     text_offset = render_text(str_depth_val, window.horizontal_center + 10, text_ypos, bottom_text_color, screen)
     
     render_text([bottom_text, bottom_subtext], window.horizontal_center + text_offset[0] * 1.1, text_ypos, bottom_text_color, screen)
+    #sub_y = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold)
+    #render_text([bottom_subtext], 10, sub_y,bottom_text_color, screen)
     
 #setup echosounder
 def echo_callback(message):
@@ -82,15 +92,21 @@ def seasave_callback(object):
 echo = EchoSounder(AppSettings.echosounder_udp_port, echo_callback)
 seasave = SeaSaveSerial("COM5", 9600, seasave_callback)
 
-if DEBUG:
+
+if AppSettings.playback_mode:
+    #001 hit the bottom (for real)
     #005 is deep with altim issue
     #008 shallow with tripline adjustment issue on upcast
-    seasave.start_simulate('EN695_001_test.cnv') #004 throws error, #001 is all messed up, 007 has flapping issue on upcast, 008 has weird padding
+    #003 is nice medium case demo
+    #004 has tripline adjustment issue
+    #005 
+    seasave.start_simulate(AppSettings.playback_file)
     echo.start_simulate(seasave.debug_max_depth_of_cast + 10, 1500, .4)
     
 else:
-    echo.start_receive()
-    seasave.start_receive()
+    next
+    #echo.start_receive()
+    #seasave.start_receive()
 
 #main program loop
 while not done:
@@ -105,12 +121,23 @@ while not done:
 
     #screen background
     screen.fill(Color.BLUE) #you should never see this it's behind the other bg images
+    #wait until the sky image isn't in animation lock
     while(viewport.sky_image.get_locked()):
         next
+    #draw the sky image
     screen.blit(viewport.sky_image,(0,0))
+    #wait until the background image isn't in animation lock
     while(viewport.bg_image.get_locked()):
         next
+    #draw the background image
     screen.blit(viewport.bg_image,(0, viewport.get_background_padding()))
+    #wait until the ship image isn't in animation lock
+    while(viewport.ship_image.get_locked()):
+        next
+    #draw the ship image
+    shx = viewport.ship_image.get_width() / 2
+    shy = viewport.ship_image.get_height()
+    screen.blit(viewport.ship_image,(window.horizontal_center - shx, viewport.get_background_padding() - shy))
 
     #for testing only
     if DEBUG:
@@ -129,7 +156,7 @@ while not done:
         else:
             ctd_depth = ctd_depth + 1
     
-
+    
     viewengine.set_instrument_depth(seasave.depth)
     viewengine.set_altimeter(seasave.altitude)
     viewengine.instrument.average_sound_velocity = seasave.sv_average
@@ -139,10 +166,8 @@ while not done:
 
     ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
-    #draw transition line
-    #(x,y)
-    
-    if 1 > 0:
+    #draw transition triplines
+    if AppSettings.draw_triplines:
         for tl in viewengine.triplines.depth_triplines:
             if(tl > viewengine.instrument.depth):
 
@@ -152,28 +177,31 @@ while not done:
                 trip_label_a = str(int(viewengine.seabed.water_depth - tl)) + "m from bottom"
                 trip_label_b = str(tl) + "m deep"
                 render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -10)
-
+    
+    #draw instrument depth
     wd = FONT.render(float2str(viewengine.instrument.depth) + 'm', True, Color.LIGHTBLUE)
     screen.blit(wd, ((window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos))
+
+    #draw countdown
+    
+    meters_to_go = int(viewengine.seabed.water_depth - viewengine.instrument.depth)
+    if(meters_to_go <= 16 and meters_to_go >= 0):
+        ttb = FONT.render('To the Bottom', True, Color.WHITE)
+        hugefont_size = int(AppSettings.font_size * 4)
+        hugefont = pygame.font.SysFont(AppSettings.font, hugefont_size)
+        mtg_text = hugefont.render(str(meters_to_go) + 'm', True, Color.WHITE)
+        
+        screen.blit(mtg_text, (50, window.height_px - (hugefont_size * 2)))
+        screen.blit(ttb, (50, window.height_px - hugefont_size))
+
 
     draw_cast_history()
     draw_bathy_history()
 
-    if(viewengine.instrument.rotate):
-        #counterclockwise
-        viewengine.instrument.angle += .1
-        if(viewengine.instrument.angle >= 3):
-            viewengine.instrument.rotate = False
-    #else:
-    #    #clockwise
-    #    viewport.instrument.angle -= .1
-    #    if(viewport.instrument.angle <= -3):
-    #        viewport.instrument.rotate = True
-    #rt = pygame.transform.rotate(viewport.instrument.instrument_image_scaled, viewport.instrument.angle)
-    
+    #draw the ctd
     screen.blit(viewengine.instrument.image_scaled, ((window.horizontal_center) - (viewengine.instrument.width_px / 2),ctd_ypos, viewengine.instrument.width_px, viewengine.instrument.height_px))
     
-    if DEBUG:
+    if AppSettings.draw_seabed_window:
         # show the bottom depth window
         yt = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold)
         yb = viewport.get_ypos_px(viewengine.seabed.water_depth_lower_threshold) - 2

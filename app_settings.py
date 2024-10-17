@@ -3,9 +3,9 @@ class AppSettings:
     initial_water_depth = 500 #default water depth when application is started before any inputs from CTD or echosounder
     tripline_jitter_m = 6 #prevents flapping by raising/lowering the tripline by x meters once the ctd has passed
     bottom_window_m = 30 #the altitude from the bottom where the display is fully zoomed in for situational awareness
-    bottom_padding_coefficient = .1 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
+    bottom_padding_coefficient = .14 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
     horizontal_center = .7 #where the CTD is shown in relation to the left side of the screen in %
-    surface_padding = .05 #size of the sky at the surface in %
+    surface_padding_coefficient = .06 #size of the sky at the surface in %
     
     ctd_min_height_px = 18 #otherwise CTD will appear teeny tiny during deep casts of 6000m or greater due to auto scaling
         
@@ -19,13 +19,20 @@ class AppSettings:
     ctd_image = 'images/ctd_trans_v2.png'
     bg_image = 'images/deepsea_bg_v2.png'
     sky_image = 'images/sky_3.png'
+    ship_image = 'images/rv_trans.png'
     font = "Arial"
     font_size = 32
     title = "Don't Hit the Bottom"
-    default_screen_size = [900,800] #width, height
+    default_screen_size = [1100,800] #width, height
     frame_rate = 200 #milliseconds between frames
-    scroll_speed = .05
+    scroll_speed = .2
     animate_transitions = True
+    draw_triplines = True
+    draw_seabed_window = False
+
+    playback_mode = True
+    playback_file = "test_casts/EN001_shallow.cnv"
+    playback_speed = 3 
     
     echosounder_udp_port = 16008 #16008 for Endeavor
     echosounder_default_sv = 1500 #sound velocity in meters/sec
