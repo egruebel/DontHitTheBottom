@@ -52,7 +52,7 @@ class SeaSaveSerial:
         
     def sim(self, asc_file_name):
         #get the max depth so we can set up the simulated echosounder
-        with open('test_casts/' + asc_file_name, 'rt') as f:
+        with open(asc_file_name, 'rt') as f:
             row = 0
             begin = False
             depth_index = 1 
@@ -94,7 +94,7 @@ class SeaSaveSerial:
             
     def start_simulate(self, asc_file_name):
         #get the max depth so we can set up the simulated echosounder
-        with open('test_casts/' + asc_file_name, 'rt') as f:
+        with open(asc_file_name, 'rt') as f:
             row = 0
             begin = False
             depth_index = 1 

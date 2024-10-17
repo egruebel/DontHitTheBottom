@@ -31,7 +31,7 @@ class AppSettings:
     draw_seabed_window = False
 
     playback_mode = True
-    playback_file = "test_casts/EN001_shallow.cnv"
+    playback_file = "test_casts/EN695_004_test.cnv"
     playback_speed = 3 
     
     echosounder_udp_port = 16008 #16008 for Endeavor
