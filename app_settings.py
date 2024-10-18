@@ -24,14 +24,15 @@ class AppSettings:
     font_size = 32
     title = "Don't Hit the Bottom"
     default_screen_size = [1100,800] #width, height
-    frame_rate = 200 #milliseconds between frames
-    scroll_speed = .2
-    animate_transitions = True
-    draw_triplines = True
-    draw_seabed_window = False
+    frame_rate = 200 #frames per second
+    scroll_speed = .2 #pixels to scroll the screen between frames
+    animate_transitions = True #animate the zoom in/out events
+    draw_triplines = True #draw the dotted triplines that trigger a zoom in/out event
+    draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
+    countdown_distance_m = 16 #altitude from the bottom where the countdown begins. 
 
     playback_mode = True
-    playback_file = "test_casts/EN695_004_test.cnv"
+    playback_file = "test_casts/EN695_003_test.cnv"
     playback_speed = 3 
     
     echosounder_udp_port = 16008 #16008 for Endeavor

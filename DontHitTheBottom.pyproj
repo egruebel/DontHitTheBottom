@@ -49,7 +49,7 @@
     <Content Include="images\deepsea_bg.png" />
     <Content Include="images\deepsea_bg_v2.png" />
     <Content Include="images\dhtb_icon.png" />
-    <Content Include="images\dhtb_icon_t.png" />
+    <Content Include="images\dhtb_icon_trans_2.png" />
     <Content Include="images\rv_trans.png" />
     <Content Include="images\sky_1.png" />
     <Content Include="images\sky_2.png" />

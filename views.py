@@ -43,7 +43,7 @@ class Seabed:
 
     def set_water_depth(self, depth_m, view_window_ceiling_m):
         self.water_depth = depth_m
-        self.history.append([self.depth_source.value,self.depth_corrected,depth_m])
+        self.history.append([self.depth_source.value, self.depth_corrected, depth_m])
         if (self.water_depth > self.water_depth_lower_threshold) or (self.water_depth < self.water_depth_upper_threshold):
             self.adjust_padding(view_window_ceiling_m)
             if self._on_padding_changed: self._on_padding_changed(self.water_depth_lower_threshold, self.water_depth_upper_threshold)
