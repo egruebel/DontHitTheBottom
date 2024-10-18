@@ -212,7 +212,7 @@ while not done:
         pygame.draw.line(screen, Color.WHITE, (0, yt), (window.width_px, yt), 1)
         pygame.draw.line(screen, Color.WHITE, (0, yb), (window.width_px, yb), 1)
 
-    #pygame.display.flip()
+    pygame.display.flip()
     clock.tick(AppSettings.frame_rate)
 pygame.quit()
 
