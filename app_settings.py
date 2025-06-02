@@ -12,7 +12,7 @@ class AppSettings:
     altimeter_max_range_m = 100 #max range in m that altimeter can detect
     altimeter_minimum_viable_m = .9 #lowest altimeter reading in m which could be considered good
     altimeter_hit_count = 25 #number of valid altimeter readings needed to use it as a depth source
-    altimeter_averaging = True #use the median average of the last n altimeter readings where n = altimeter_hit_count
+    altimeter_averaging = False #use the median average of the last n altimeter readings where n = altimeter_hit_count
     altimeter_default_sv = 1500 #sound velocity in meters/sec that the altimeter uses in firmware
     altimeter_sv_correction = True #correct the altimeter reading using the instantaneous sv from the CTD 
 
@@ -21,23 +21,33 @@ class AppSettings:
     sky_image = 'images/sky_3.png'
     ship_image = 'images/rv_trans.png'
     font = "Arial"
-    font_size = 32
+    font_size = 38
     title = "Don't Hit the Bottom"
     default_screen_size = [1100,800] #width, height
     frame_rate = 200 #frames per second
     scroll_speed = .2 #pixels to scroll the screen between frames
     animate_transitions = True #animate the zoom in/out events
     draw_triplines = True #draw the dotted triplines that trigger a zoom in/out event
-    draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
-    countdown_distance_m = 16 #altitude from the bottom where the countdown begins. 
+    draw_seabed_window = True #draw the high and low threshold where the screen gets redrawn due to seafloor change
+    countdown_distance_m = 30 #altitude from the bottom where the countdown begins. 
 
     playback_mode = True
-    playback_file = "test_casts/EN695_003_test.cnv"
-    playback_speed = 3 
+    playback_file = "test_casts/EN731_CTD_09_clipped.cnv"
+    playback_speed = .002 #seconds between cnv file scans, larger number = slower
     
     echosounder_udp_port = 16008 #16008 for Endeavor
     echosounder_default_sv = 1500 #sound velocity in meters/sec
     echosounder_sv_correction = True #correct echosounder reading using the average sv from the CTD
+
+    seasave_ip = '192.168.2.52'
+    seasave_port = 49161
+
+    seasave_depth_qualifier = 'Depth [salt water, m]'
+    seasave_altimeter_qualifier = 'Altimeter [m]'
+    seasave_pressure_qualifier = 'Pressure, Digiquartz [db]'
+    seasave_sv_qualifier = 'Sound Velocity [Chen-Millero, m/s]'
+    seasave_sv_avg_qualifier = 'Average Sound Velocity [Chen-Millero, m/s]'
+    seasave_bottom_depth_qualifier = 'Echosounder Bottom Depth [m]'
 
     seasave_serial_port = "COM5"
     seasave_serial_baud = 9600

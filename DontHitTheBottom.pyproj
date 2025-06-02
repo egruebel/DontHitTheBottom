@@ -25,6 +25,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app_settings.py" />
+    <Compile Include="cnv_file_interface.py" />
     <Compile Include="ctd.py">
       <SubType>Code</SubType>
     </Compile>

@@ -47,16 +47,27 @@ class CTD:
 
 
     def set_altimeter(self, altitude):
+
         #self.altitude = altitude
         self.altimeter_active = False
         if(altitude < self.altimeter_max_range) and (altitude > AppSettings.altimeter_minimum_viable_m):
             #we have an altimeter reading within the valid range, add it to the hit count
-           while(len(self.altimeter_history) >= AppSettings.altimeter_hit_count):
-               self.altimeter_history.pop(0)
-               #dont want the hit count to get too big (int.max...though very unlikely it would ever get that high)
-           self.altimeter_history.append(altitude)
+            #first shrink the hit counter if it's too big
+            while(len(self.altimeter_history) >= AppSettings.altimeter_hit_count):
+                self.altimeter_history.pop(0)
+                #dont want the hit count to get too big (int.max...though very unlikely it would ever get that high)
+            if(len(self.altimeter_history) > 3):
+                std = statistics.stdev(self.altimeter_history)
+                if std > 2:
+                    print('stdev: ' + str(std))
+                    print(self.altimeter_history)
+           
+            self.altimeter_history.append(altitude)
         else:
-            self.altimeter_history.clear()
+            if(len(self.altimeter_history) > 0):
+                self.altimeter_history.pop(0) 
+
+
         if(len(self.altimeter_history) >= AppSettings.altimeter_hit_count):
             #if you're here it means that the altimeter is good-to-go as a depth source
             if(AppSettings.altimeter_averaging):

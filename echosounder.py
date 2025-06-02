@@ -18,11 +18,11 @@ class EchoSounder:
 
     def sim(self, rand_coeff):
         while True:
-            time.sleep(1.0)
+            time.sleep(1.5)
             self.depth = self.depth + random.uniform((-1 * rand_coeff), rand_coeff)
-            self.keel_depth = 5
-            self.sound_velocity = 1500
-            self.callback("echosounder simulation: " + str(self.depth))
+            #self.keel_depth = 5
+            #self.sound_velocity = 1500
+            self.callback(self.depth)
         return
             
     def start_simulate(self, start_depth_m, start_sv, rand_coeff):
@@ -53,9 +53,8 @@ class EchoSounder:
                     print("Exception in echosounder.py")
                     for a in e.args:
                         print(a)
-            time.sleep(1)
+            time.sleep(.2)
 
-    def start_receive(self, viewengine):
-        #self.viewengine = viewengine
+    def begin_receive(self, viewengine):
         x = threading.Thread(target=self.connect, args = (viewengine,))
         x.start()

@@ -3,7 +3,9 @@ import pygame
 pygame.init()
 import random
 from echosounder import EchoSounder
-from seasave_serial import SeaSaveSerial
+from seasave_tcp import SeasaveApi
+
+from cnv_file_interface import CnvFilePlayback
 from app_settings import AppSettings
 from primitives import *
 from views import *
@@ -22,6 +24,7 @@ dhtb_icon = pygame.image.load('images/dhtb_icon_trans_2.png')
 pygame.display.set_icon(dhtb_icon)
 
 ctd_depth = 0
+#ctd_ypos = 0
 upcast = False
 scroll_speed = AppSettings.scroll_speed
 window = ViewWindow(default_size)
@@ -73,14 +76,30 @@ def draw_threaded_surface(surface, position_x_y):
     screen.blit(surface, position_x_y)
     
 #setup echosounder
-def echo_callback(message):
+def echo_callback(depth):
     return
-def seasave_callback(object):
+def seasave_callback(seasave):
+    viewengine.set_instrument_depth(seasave.depth)
+    viewengine.set_altimeter(seasave.altitude)
+    viewengine.instrument.average_sound_velocity = seasave.sv_average
+    viewengine.instrument.instantaneous_sound_velocity = seasave.sv_instantaneous
+    viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
+    viewengine.set_water_depth(echo.depth)
     return
-    #if(random.uniform(0,10) > 9):
-        #print(object.depth, object.altitude, object.sv_average)
+def cnv_file_reader_callback(reader):
+    viewengine.set_instrument_depth(reader.depth)
+    viewengine.set_altimeter(reader.altitude)
+    viewengine.instrument.average_sound_velocity = reader.sv_average
+    viewengine.instrument.instantaneous_sound_velocity = reader.sv_instantaneous
+    viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
+    viewengine.set_water_depth(echo.depth)
+    #ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
+    return
+
+
 echo = EchoSounder(AppSettings.echosounder_udp_port, echo_callback)
-seasave = SeaSaveSerial("COM5", 9600, seasave_callback)
+seasave = SeasaveApi("192.168.2.52", 49161, seasave_callback)
+cnv_file = CnvFilePlayback(AppSettings.playback_file, AppSettings.playback_speed, cnv_file_reader_callback)
 
 
 if AppSettings.playback_mode:
@@ -89,13 +108,14 @@ if AppSettings.playback_mode:
     #008 shallow with tripline adjustment issue on upcast
     #003 is nice medium case demo
     #004 has tripline adjustment issue
-    seasave.start_simulate(AppSettings.playback_file)
-    echo.start_simulate(seasave.debug_max_depth_of_cast + 10, 1500, .4)
-    
+    cnv_file.start_playback()
+    if cnv_file.simulate_echosounder:
+        #the cnv file does not contain bottom depth information 
+        echo.start_simulate(cnv_file.simulate_max_depth_of_cast + 10, 1500, .4)
 else:
     next
-    #echo.start_receive()
-    #seasave.start_receive()
+    echo.start_receive()
+    seasave.begin_receive()
 
 #main program loop
 while not done:
@@ -131,16 +151,17 @@ while not done:
         viewengine.instrument.instantaneous_sound_velocity = 1500
         viewengine.seabed.sound_velocity_m_s = 1500
         viewengine.set_water_depth(debug_water_depth)
-        ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
-    else:
+        #ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
+    #else:
         #normal mode use the inputs or the file playback values
-        viewengine.set_instrument_depth(seasave.depth)
-        viewengine.set_altimeter(seasave.altitude)
-        viewengine.instrument.average_sound_velocity = seasave.sv_average
-        viewengine.instrument.instantaneous_sound_velocity = seasave.sv_instantaneous
-        viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
-        viewengine.set_water_depth(echo.depth)
-        ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
+        #viewengine.set_instrument_depth(seasave.depth)
+        #viewengine.set_altimeter(seasave.altitude)
+        #viewengine.instrument.average_sound_velocity = seasave.sv_average
+        #viewengine.instrument.instantaneous_sound_velocity = seasave.sv_instantaneous
+        #viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
+        #viewengine.set_water_depth(echo.depth)
+        
+    ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
     #draw transition triplines
     if AppSettings.draw_triplines:
@@ -154,16 +175,7 @@ while not done:
                 trip_label_b = str(tl) + "m deep"
                 render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -10)
     
-    #draw countdown
-    meters_to_go = int(viewengine.seabed.water_depth - viewengine.instrument.depth)
-    if(meters_to_go <= AppSettings.countdown_distance_m and meters_to_go >= 0):
-        ttb = FONT.render('To the Bottom', True, Color.WHITE)
-        hugefont_size = int(AppSettings.font_size * 4)
-        hugefont = pygame.font.SysFont(AppSettings.font, hugefont_size)
-        mtg_text = hugefont.render(str(meters_to_go) + 'm', True, Color.WHITE)
-        
-        screen.blit(mtg_text, (50, window.height_px - (hugefont_size * 2)))
-        screen.blit(ttb, (50, window.height_px - hugefont_size))
+    
 
     #draw history
     draw_cast_history()
@@ -199,6 +211,17 @@ while not done:
     render_text([depth_source_text, depth_source_subtext], window.horizontal_center + depth_text_offset[0] * 1.1, depth_text_ypos, depth_source_text_color, screen)
     #sub_y = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold)
     #render_text([bottom_subtext], 10, sub_y,bottom_text_color, screen)
+
+    #draw countdown
+    meters_to_go = int(viewengine.seabed.water_depth - viewengine.instrument.depth)
+    if(meters_to_go <= AppSettings.countdown_distance_m and meters_to_go >= 0):
+        ttb = FONT.render('To the Bottom', True, Color.WHITE)
+        hugefont_size = int(AppSettings.font_size * 4)
+        hugefont = pygame.font.SysFont(AppSettings.font, hugefont_size)
+        mtg_text = hugefont.render(str(meters_to_go) + 'm', True, Color.WHITE)
+        
+        screen.blit(mtg_text, (50, window.height_px - (hugefont_size * 2)))
+        screen.blit(ttb, (50, window.height_px - hugefont_size))
 
     #draw the seabed window
     if AppSettings.draw_seabed_window:

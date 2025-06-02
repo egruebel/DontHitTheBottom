@@ -97,7 +97,7 @@ class SeaSaveSerial:
         with open(asc_file_name, 'rt') as f:
             row = 0
             begin = False
-            depth_index = 1 
+            depth_index = 4 
             
             header = []
             for line in f:
