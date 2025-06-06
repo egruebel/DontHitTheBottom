@@ -8,11 +8,12 @@ class CnvFilePlayback:
         self.filepath = filepath
         self.callback = callback
         self.playback_speed = playback_speed
-        
-        
+
         self.simulate_echosounder = False
         self.simulate_max_depth_of_cast = 0
         self.simulate_sv_avg = False
+
+        self.acquiring = False
 
         self.depth = 0
         self.pressure = 0
@@ -54,6 +55,7 @@ class CnvFilePlayback:
                     begin_reading = True
                     continue
                 if(begin_reading):
+                    self.acquiring = True
                     dat = line.split()
                     self.depth = float(dat[depth_index])
                     self.altitude = float(dat[altitude_index])
@@ -67,9 +69,10 @@ class CnvFilePlayback:
 
             else:
                 # No more lines to be read from file
+                self.acquiring = False
                 return
             
-    def start_playback(self):
+    def begin_playback(self):
         with open(self.filepath, 'rt') as f:
             #row_context = 0
             begin_reading = False

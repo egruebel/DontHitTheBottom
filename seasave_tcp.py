@@ -1,6 +1,7 @@
 import socket
 import time
 import threading
+from app_settings import AppSettings
 import xml.etree.ElementTree as ET
 
 class SeasaveApi:
@@ -8,6 +9,7 @@ class SeasaveApi:
     def __init__(self, ip, port, receive_callback):
         self.ip = ip
         self.port = port
+        self.receive_callback = receive_callback
         self.field_list = []
         self.connected = False
         self.acquiring = False
@@ -15,11 +17,11 @@ class SeasaveApi:
         self.buffer_size = 4000 #4kb
         self.socket_timeout = 10 #seconds
 
-        self.depth_qualifier = 'Depth [salt water, m]'
-        self.altimeter_qualifier = 'Altimeter [m]'
-        self.pressure_qualifier = 'Pressure, Digiquartz [db]'
-        self.sv_qualifier = 'Sound Velocity [Chen-Millero, m/s]'
-        self.sv_avg_qualifier = 'Average Sound Velocity [Chen-Millero, m/s]'
+        self.depth_qualifier = AppSettings.seasave_depth_qualifier
+        self.altimeter_qualifier = AppSettings.seasave_altimeter_qualifier
+        self.pressure_qualifier = AppSettings.seasave_pressure_qualifier
+        self.sv_qualifier = AppSettings.seasave_sv_qualifier
+        self.sv_avg_qualifier = AppSettings.seasave_sv_avg_qualifier
 
         self.depth = 0
         self.pressure = 0
@@ -61,13 +63,6 @@ class SeasaveApi:
             if field[0] == qualifier:
                 return field[3]
 
-    def populate_output_variables(self):
-        self.depth = self.get_value_from_fieldlist(self.depth_qualifier)
-        self.pressure = self.get_value_from_fieldlist(self.pressure_qualifier)
-        self.altitude = self.get_value_from_fieldlist(self.altimeter_qualifier)
-        self.sv_instantaneous = self.get_value_from_fieldlist(self.sv_qualifier)
-        self.sv_average = self.get_value_from_fieldlist(self.sv_avg_qualifier)
-
     def check_minimum_viable_fields(self):
         #this application requires three fields from Seasave. Depth (m), pressure (db), and altimeter (m)
         #this function lets the user know if a meaningful way that they have Seasave set up incorrectly
@@ -84,15 +79,19 @@ class SeasaveApi:
             raise Exception("Required parameter Average Sound Velocity was not found in Seasave TCP/IP output")
 
     def deliver_data(self):
-        self.populate_output_variables()
-        print('Depth: ' + str(self.depth))
-        print('Altitude: ' + str(self.altitude))
-        print('SV: ' + str(self.sv))
-        print('SV Average: ' + str(self.sv_avg))
+        self.depth = self.get_value_from_fieldlist(self.depth_qualifier)
+        self.pressure = self.get_value_from_fieldlist(self.pressure_qualifier)
+        self.altitude = self.get_value_from_fieldlist(self.altimeter_qualifier)
+        self.sv_instantaneous = self.get_value_from_fieldlist(self.sv_qualifier)
+        self.sv_average = self.get_value_from_fieldlist(self.sv_avg_qualifier)
+        self.receive_callback(self)
+        #print('Depth: ' + str(self.depth))
+        #print('Altitude: ' + str(self.altitude))
+        #print('SV: ' + str(self.sv))
+        #print('SV Average: ' + str(self.sv_avg))
 
     def receive_loop(self, socket):
         try:
-            print('1')
             while not self.manual_disconnect:
                 tries = 4
                 seasave_data = socket.recv(self.buffer_size)
@@ -101,11 +100,14 @@ class SeasaveApi:
                     if(tries == 0):
                         raise Exception("Error in Seasave acquisition")
                     seasave_data += socket.recv(self.buffer_size)
+                #it's important that these two methods don't hide exceptions, so no try/except blocks
+                self.acquiring = True
                 self.update_field_list(seasave_data)
                 self.deliver_data()
 
         except Exception as e:
-            print('error in receive loop')
+            self.acquiring = False
+            print('error in seasave TCP: ', e)
 
     def connect(self):
         print('connecting to ' + self.ip + ':' + str(self.port))

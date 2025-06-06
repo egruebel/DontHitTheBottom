@@ -2,17 +2,18 @@ import socket
 import threading
 import time
 import random
+from app_settings import AppSettings
 
 class EchoSounder:
 
     def __init__(self, broadcast_port, receive_callback):
         self.port = broadcast_port
         self.callback = receive_callback
-        self.depth = 0
-        self.sound_velocity = 0
-        self.keel_depth = 0
+        self.depth = None
+        self.sound_velocity = 1500
+        self.keel_depth = 5
         self.client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
-        #self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        self.client.settimeout(8)
         # Enable broadcasting mode
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
@@ -30,31 +31,39 @@ class EchoSounder:
         self.sound_velocity = start_sv
         x = threading.Thread(target=self.sim, args = (rand_coeff,))
         x.start()
-        
-    def connect(self, viewengine):
+
+    def connect(self):
         self.client.bind(("", self.port))
-        self.client.setblocking(0)
+        #self.client.setblocking(0)
         data =''
         address = ''
         while True:
             try:
-                data,address = self.client.recvfrom(10000)
-            except socket.error:
-                pass
+                data,address = self.client.recvfrom(4000)
+            except Exception as e:
+                self.depth = None
+                self.callback(self.depth, self.keel_depth, self.sound_velocity)
+                print(e)
             else:
-                try:
-                    s = str(data).split(',')
-                    self.depth = float(s[6])
-                    self.keel_depth = float(s[8])
-                    self.sound_velocity = int(s[9].replace('\\r\\n\'',''))
-                    self.callback(data)
-                    viewengine.set_water_depth(self.depth)
+                try: #todo put these NMEA string indices into app settings
+                    nmea = str(data).split(',')
+                    self.depth = nmea[AppSettings.echosounder_nmea_depth_index].strip()
+                    self.keel_depth = nmea[AppSettings.echosounder_nmea_keeldepth_index].strip()
+                    self.sound_velocity = nmea[AppSettings.echosounder_nmea_sv_index].replace('\\r\\n\'','').strip()
+
+                    if(self.depth == '' or self.depth == '0.00'):
+                        self.depth = None
+                    else:
+                        self.depth = float(self.depth)
+                    self.keel_depth = float(self.keel_depth)
+                    self.sound_velocity = int(self.sound_velocity)
+                    self.callback(self.depth, self.keel_depth, self.sound_velocity)
                 except:
                     print("Exception in echosounder.py")
                     for a in e.args:
                         print(a)
             time.sleep(.2)
 
-    def begin_receive(self, viewengine):
-        x = threading.Thread(target=self.connect, args = (viewengine,))
+    def begin_receive(self):
+        x = threading.Thread(target=self.connect)
         x.start()

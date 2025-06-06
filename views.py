@@ -44,6 +44,8 @@ class Seabed:
     def set_water_depth(self, depth_m, view_window_ceiling_m):
         self.water_depth = depth_m
         self.history.append([self.depth_source.value, self.depth_corrected, depth_m])
+        if(depth_m == None):
+            return
         if (self.water_depth > self.water_depth_lower_threshold) or (self.water_depth < self.water_depth_upper_threshold):
             self.adjust_padding(view_window_ceiling_m)
             if self._on_padding_changed: self._on_padding_changed(self.water_depth_lower_threshold, self.water_depth_upper_threshold)
@@ -105,7 +107,6 @@ class ViewPort:
         frame_count = 6
         for this_frame in range(frame_count):
             if self.kill:
-                print("animation killed")
                 break
             self.screen_top_meters = self._ease_out_cubic(this_frame, old_top, top_dif, frame_count)
             self.screen_bottom_meters = self._ease_out_cubic(this_frame, old_bottom, bottom_dif, frame_count)
@@ -150,6 +151,8 @@ class ViewPort:
         #scale the ship image
         if(self.screen_top_meters <= 0):
             sw = self.px_per_meter * self.window.ship_image.get_width() * .07
+            if(sw < AppSettings.ship_min_height_px):
+               sw = AppSettings.ship_min_height_px
             self.ship_image = pygame.transform.scale(self.window.ship_image, (sw, sw * .6))
 
     def get_background_padding(self):
@@ -181,7 +184,7 @@ class ViewEngine:
                 self.seabed.depth_corrected = True
                 self.instrument.altitude = (self.instrument.altitude / self.instrument.altimeter_default_sound_velocity) * self.instrument.instantaneous_sound_velocity
             water_depth_m = self.instrument.depth + self.instrument.altitude
-        else:
+        elif(water_depth_m != None):
             #altimeter is not active use echosounder
             if(AppSettings.echosounder_sv_correction and self.instrument.depth > water_depth_m / 2):
                 water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity

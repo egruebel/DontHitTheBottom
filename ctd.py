@@ -45,33 +45,55 @@ class CTD:
         self.image_scaled = pygame.transform.scale(self.image, (self.width_px, self.height_px))
         #self.ctd_image_scaled = pygame.transform.rotate(self.ctd_image_scaled, 20)
 
+    def remove_highest_deviation(self, vals, avg):
+        highest_index = 0
+        highest_dev = 0
+        for i, v in enumerate(vals):
+            dev = abs(v-avg)
+            if(dev > highest_dev):
+                highest_dev = dev
+                highest_index = i
+        vals.pop(highest_index)
+
+
 
     def set_altimeter(self, altitude):
 
         #self.altitude = altitude
         self.altimeter_active = False
-        if(altitude < self.altimeter_max_range) and (altitude > AppSettings.altimeter_minimum_viable_m):
-            #we have an altimeter reading within the valid range, add it to the hit count
-            #first shrink the hit counter if it's too big
-            while(len(self.altimeter_history) >= AppSettings.altimeter_hit_count):
-                self.altimeter_history.pop(0)
-                #dont want the hit count to get too big (int.max...though very unlikely it would ever get that high)
-            if(len(self.altimeter_history) > 3):
-                std = statistics.stdev(self.altimeter_history)
-                if std > 2:
-                    print('stdev: ' + str(std))
-                    print(self.altimeter_history)
-           
-            self.altimeter_history.append(altitude)
+
+        #adjust the sliding window of altimeter data
+        self.altimeter_history.append(altitude)
+        while(len(self.altimeter_history) > AppSettings.altimeter_hit_count):
+            self.altimeter_history.pop(0)
+
+        num = int(AppSettings.altimeter_hit_count * .25)
+        ms = AppSettings.altimeter_hit_count - num
+        max_std = 3
+
+        size = len(self.altimeter_history)
+        std = 0
+        avg = 0
+        if (size > 4):
+            std = statistics.stdev(self.altimeter_history)
+            std = int(std)
+            avg = statistics.median(self.altimeter_history)
+
+        #track passes and fails
+        passes = 0
+        fails = 0
+
+        use_altimeter = False
+        if(size >= ms) and (std < 3) and (avg > AppSettings.altimeter_minimum_viable_m) and (avg < AppSettings.altimeter_max_range_m):
+            passes += 1
+            use_altimeter = True
         else:
-            if(len(self.altimeter_history) > 0):
-                self.altimeter_history.pop(0) 
+            fails -= 1
 
-
-        if(len(self.altimeter_history) >= AppSettings.altimeter_hit_count):
+        if(use_altimeter):
             #if you're here it means that the altimeter is good-to-go as a depth source
             if(AppSettings.altimeter_averaging):
-                self.altitude = statistics.median(self.altimeter_history)
+                self.altitude = avg
             else:
                 self.altitude = altitude
             self.altimeter_active = True

@@ -4,27 +4,35 @@ pygame.init()
 import random
 from echosounder import EchoSounder
 from seasave_tcp import SeasaveApi
-
 from cnv_file_interface import CnvFilePlayback
 from app_settings import AppSettings
 from primitives import *
 from views import *
+import console
 
 #constants
 DEBUG = False
 debug_water_depth = 1000
 default_size = AppSettings.default_screen_size
 screen = pygame.display.set_mode(default_size, pygame.RESIZABLE)
-pygame.display.set_caption(AppSettings.title)
 clock = pygame.time.Clock()
 done = False
 
-#set the icon
+app_instrument_depth = 0
+app_pressure = 0
+app_altitude = 0
+app_water_depth = 2000
+app_sv_average = 0
+app_sv_instantaneous = 0
+app_inst_sv = 0
+
+#setup the window
 dhtb_icon = pygame.image.load('images/dhtb_icon_trans_2.png')
 pygame.display.set_icon(dhtb_icon)
+pygame.display.set_caption(AppSettings.title)
 
-ctd_depth = 0
-#ctd_ypos = 0
+
+#ctd_depth = 0
 upcast = False
 scroll_speed = AppSettings.scroll_speed
 window = ViewWindow(default_size)
@@ -43,9 +51,12 @@ def draw_cast_history():
     h_length = len(viewengine.instrument.history)
     x = window.horizontal_center - ( scroll_speed * h_length)
     for i in range(h_length):
-        y = viewport.get_ypos_px(viewengine.instrument.history[i])
+        depth = viewengine.instrument.history[i]
+        y = viewport.get_ypos_px(depth)
         x += scroll_speed
-        pygame.draw.circle(screen, Color.BLUE, (x,y), 1)
+        #don't draw if zero (instrument not acquiring)
+        if(depth != 0):
+            pygame.draw.circle(screen, Color.BLUE, (x,y), 1)
 
 def draw_bathy_history():
     if not viewengine.seabed.history:
@@ -61,11 +72,12 @@ def draw_bathy_history():
         h_src = viewengine.seabed.history[i][0] #depth source
         h_corr = viewengine.seabed.history[i][1] #depth corrected?
         h_val = viewengine.seabed.history[i][2] # depth value
-        y = viewport.get_ypos_px(h_val)
         x += scroll_speed
-        thk = 3 if h_corr else 2 #fatter circle if corrected
-        col = Color.ORANGE if (h_src == 1) else Color.ORANGE3
-        pygame.draw.circle(screen, col, (x,y), thk)
+        if(h_val != None):
+            y = viewport.get_ypos_px(h_val)
+            thk = 3 if h_corr else 2 #fatter circle if corrected
+            col = Color.ORANGE if (h_src == 1) else Color.ORANGE3
+            pygame.draw.circle(screen, col, (x,y), thk)
 
 def draw_threaded_surface(surface, position_x_y):
     #since animations run in another thread we need to make sure the surface isn't locked
@@ -75,46 +87,57 @@ def draw_threaded_surface(surface, position_x_y):
     #todo there's an occasional exception that the surface is locked sorry if if happens
     screen.blit(surface, position_x_y)
     
-#setup echosounder
-def echo_callback(depth):
-    return
+
+#callback functions from acquisition sources
+def echo_callback(depth, keeldepth, sv):
+    global app_water_depth
+    app_water_depth = depth
 def seasave_callback(seasave):
-    viewengine.set_instrument_depth(seasave.depth)
-    viewengine.set_altimeter(seasave.altitude)
-    viewengine.instrument.average_sound_velocity = seasave.sv_average
-    viewengine.instrument.instantaneous_sound_velocity = seasave.sv_instantaneous
-    viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
-    viewengine.set_water_depth(echo.depth)
+    global app_instrument_depth
+    global app_altitude
+    global app_sv_average
+    global app_sv_instantaneous
+
+    app_instrument_depth = seasave.depth
+    app_altitude = seasave.altitude
+    app_sv_average = seasave.sv_average
+    app_sv_instantaneous = seasave.sv_instantaneous
     return
 def cnv_file_reader_callback(reader):
-    viewengine.set_instrument_depth(reader.depth)
-    viewengine.set_altimeter(reader.altitude)
-    viewengine.instrument.average_sound_velocity = reader.sv_average
-    viewengine.instrument.instantaneous_sound_velocity = reader.sv_instantaneous
-    viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
-    viewengine.set_water_depth(echo.depth)
-    #ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
+    global app_instrument_depth
+    global app_altitude
+    global app_sv_average
+    global app_sv_instantaneous
+
+    app_instrument_depth = reader.depth
+    app_altitude = reader.altitude
+    app_sv_average = reader.sv_average
+    app_sv_instantaneous = reader.sv_instantaneous
+
+    #viewengine.set_instrument_depth(reader.depth)
+    #viewengine.set_altimeter(reader.altitude)
+    #viewengine.instrument.average_sound_velocity = reader.sv_average
+    #viewengine.instrument.instantaneous_sound_velocity = reader.sv_instantaneous
+    #viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
+    #viewengine.set_water_depth(echo.depth)
     return
 
-
+console.init()
+console.dhtb_console.add_message("test")
 echo = EchoSounder(AppSettings.echosounder_udp_port, echo_callback)
-seasave = SeasaveApi("192.168.2.52", 49161, seasave_callback)
+seasave = SeasaveApi(AppSettings.seasave_ip, AppSettings.seasave_port, seasave_callback)
 cnv_file = CnvFilePlayback(AppSettings.playback_file, AppSettings.playback_speed, cnv_file_reader_callback)
 
-
+acq_device = None
 if AppSettings.playback_mode:
-    #001 hit the bottom (for real)
-    #005 is deep with altim issue
-    #008 shallow with tripline adjustment issue on upcast
-    #003 is nice medium case demo
-    #004 has tripline adjustment issue
-    cnv_file.start_playback()
+    acq_device = cnv_file
+    cnv_file.begin_playback()
     if cnv_file.simulate_echosounder:
         #the cnv file does not contain bottom depth information 
         echo.start_simulate(cnv_file.simulate_max_depth_of_cast + 10, 1500, .4)
 else:
-    next
-    echo.start_receive()
+    acq_device = seasave
+    echo.begin_receive()
     seasave.begin_receive()
 
 #main program loop
@@ -138,6 +161,8 @@ while not done:
     shy = viewport.ship_image.get_height()
     draw_threaded_surface(viewport.ship_image,(window.horizontal_center - shx, viewport.get_background_padding() - shy))
 
+    
+
     #for testing only
     if DEBUG:
         #debug mode the ctd depth is the mouse position on the screen
@@ -151,16 +176,19 @@ while not done:
         viewengine.instrument.instantaneous_sound_velocity = 1500
         viewengine.seabed.sound_velocity_m_s = 1500
         viewengine.set_water_depth(debug_water_depth)
-        #ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
-    #else:
-        #normal mode use the inputs or the file playback values
-        #viewengine.set_instrument_depth(seasave.depth)
-        #viewengine.set_altimeter(seasave.altitude)
-        #viewengine.instrument.average_sound_velocity = seasave.sv_average
-        #viewengine.instrument.instantaneous_sound_velocity = seasave.sv_instantaneous
-        #viewengine.seabed.sound_velocity_m_s = echo.sound_velocity
-        #viewengine.set_water_depth(echo.depth)
-        
+    else:
+        viewengine.set_instrument_depth(app_instrument_depth)
+        viewengine.set_altimeter(app_altitude)
+        viewengine.instrument.average_sound_velocity = app_sv_average
+        viewengine.instrument.instantaneous_sound_velocity = app_sv_instantaneous
+        viewengine.set_water_depth(app_water_depth)
+
+    #if ctd is not acquiring in playback or seasave don't show it
+    #todo i'm not crazy about this method
+    if(not acq_device.acquiring):
+        app_instrument_depth = 0
+        app_altitude = 0
+
     ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
     #draw transition triplines
@@ -175,53 +203,52 @@ while not done:
                 trip_label_b = str(tl) + "m deep"
                 render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -10)
     
-    
-
     #draw history
     draw_cast_history()
     draw_bathy_history()
 
-    #draw the instrument
-    screen.blit(viewengine.instrument.image_scaled, ((window.horizontal_center) - (viewengine.instrument.width_px / 2),ctd_ypos, viewengine.instrument.width_px, viewengine.instrument.height_px))
+    #draw the instrument if it's acquiring
+    if(acq_device.acquiring):
+        screen.blit(viewengine.instrument.image_scaled, ((window.horizontal_center) - (viewengine.instrument.width_px / 2),ctd_ypos, viewengine.instrument.width_px, viewengine.instrument.height_px))
     
-    #draw instrument depth value
-    wd = FONT.render(float2str(viewengine.instrument.depth) + 'm', True, Color.LIGHTBLUE)
-    screen.blit(wd, ((window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos))
+        #draw instrument depth value
+        wd = FONT.render(float2str(viewengine.instrument.depth) + 'm', True, Color.LIGHTBLUE)
+        screen.blit(wd, ((window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos))
 
-    #draw the depth source and value
+    #draw the depth source and value if it's acquiring or not timed out "None"
     #todo depth source should be its own class eventually since this is a mess
-    depth_source_text_color = Color.ORANGE
-    depth_source_text = ""
-    depth_source_subtext = ""
-    if (viewengine.seabed.depth_source == DepthSource.ECHO):
-        depth_source_text =  "Echosounder"
-        depth_source_text_color = Color.ORANGE2
-    elif (viewengine.seabed.depth_source == DepthSource.ALTIMETER):
-        depth_source_text = "Altimeter"
-        depth_source_text_color = Color.ORANGE3
-    if(viewengine.seabed.depth_corrected):
-        depth_source_subtext = "Corrected"
-    str_depth_val = float2str(viewengine.seabed.water_depth) + "m " 
+    if(not viewengine.seabed.water_depth == None):
+        depth_source_text_color = Color.ORANGE
+        depth_source_text = ""
+        depth_source_subtext = ""
+        if (viewengine.seabed.depth_source == DepthSource.ECHO):
+            depth_source_text =  "Echosounder"
+            depth_source_text_color = Color.ORANGE2
+        elif (viewengine.seabed.depth_source == DepthSource.ALTIMETER):
+            depth_source_text = "Altimeter"
+            depth_source_text_color = Color.ORANGE3
+        if(viewengine.seabed.depth_corrected):
+            depth_source_subtext = "Corrected"
+        str_depth_val = float2str(viewengine.seabed.water_depth) + "m " 
     
-    #depth_text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_lower_threshold - (viewengine.seabed.water_depth_lower_threshold - viewengine.seabed.water_depth_upper_threshold))
-    depth_text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold + (viewengine.seabed.depth_padding/2))
-    #text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth)
-    depth_text_offset = render_text(str_depth_val, window.horizontal_center + 10, depth_text_ypos, depth_source_text_color, screen)
-    
-    render_text([depth_source_text, depth_source_subtext], window.horizontal_center + depth_text_offset[0] * 1.1, depth_text_ypos, depth_source_text_color, screen)
-    #sub_y = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold)
-    #render_text([bottom_subtext], 10, sub_y,bottom_text_color, screen)
+        depth_text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold + (viewengine.seabed.depth_padding/2))
+        depth_text_offset = render_text(str_depth_val, window.horizontal_center + 10, depth_text_ypos, depth_source_text_color, screen)
+        render_text([depth_source_text, depth_source_subtext], window.horizontal_center + depth_text_offset[0] * 1.1, depth_text_ypos, depth_source_text_color, screen)
 
     #draw countdown
-    meters_to_go = int(viewengine.seabed.water_depth - viewengine.instrument.depth)
-    if(meters_to_go <= AppSettings.countdown_distance_m and meters_to_go >= 0):
-        ttb = FONT.render('To the Bottom', True, Color.WHITE)
-        hugefont_size = int(AppSettings.font_size * 4)
-        hugefont = pygame.font.SysFont(AppSettings.font, hugefont_size)
-        mtg_text = hugefont.render(str(meters_to_go) + 'm', True, Color.WHITE)
-        
-        screen.blit(mtg_text, (50, window.height_px - (hugefont_size * 2)))
-        screen.blit(ttb, (50, window.height_px - hugefont_size))
+    #if greater than 5m from the bottom display integer, if very close display decimal for precision
+    #draw this last so it displays on top of other stuff
+    if(viewengine.seabed.water_depth != None):
+        meters_to_go = round(viewengine.seabed.water_depth - viewengine.instrument.depth,1)
+        if(meters_to_go >= 5):
+            meters_to_go = int(meters_to_go)
+        if(meters_to_go <= AppSettings.countdown_distance_m and meters_to_go >= 0):
+            ttb = FONT.render('To the Bottom', True, Color.WHITE)
+            hugefont_size = int(AppSettings.font_size * 4)
+            hugefont = pygame.font.SysFont(AppSettings.font, hugefont_size)
+            mtg_text = hugefont.render(str(meters_to_go) + 'm', True, Color.WHITE)
+            screen.blit(mtg_text, (50, window.height_px - (hugefont_size * 2)))
+            screen.blit(ttb, (50, window.height_px - hugefont_size))
 
     #draw the seabed window
     if AppSettings.draw_seabed_window:

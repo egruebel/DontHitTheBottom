@@ -26,6 +26,8 @@
   <ItemGroup>
     <Compile Include="app_settings.py" />
     <Compile Include="cnv_file_interface.py" />
+    <Compile Include="console.py" />
+    <Compile Include="console_controller.py" />
     <Compile Include="ctd.py">
       <SubType>Code</SubType>
     </Compile>
