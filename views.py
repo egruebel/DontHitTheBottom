@@ -6,6 +6,7 @@ from enum import Enum
 import threading
 import time
 import math
+import console
 
 class DepthSource(Enum):
     NONE = 0
@@ -28,7 +29,7 @@ class ViewWindow:
         self.horizontal_center = self.width_px * AppSettings.horizontal_center
 
 class Seabed:
-
+    #todo triplines get all fucked up in very shallow water 8m or so
     def __init__(self, initial_depth_m, initial_ceiling_m, on_padding_changed = None):
         self.water_depth = initial_depth_m 
         self._on_padding_changed = on_padding_changed
@@ -40,6 +41,7 @@ class Seabed:
         self.sound_velocity_m_s = AppSettings.echosounder_default_sv
         self.depth_source = DepthSource.NONE
         self.depth_corrected = False
+        self.depth_active_sv = 0
 
     def set_water_depth(self, depth_m, view_window_ceiling_m):
         self.water_depth = depth_m
@@ -61,7 +63,6 @@ class Seabed:
     def _get_water_depth_padding(self, view_window_ceiling_m):
         return (self.water_depth - view_window_ceiling_m) * AppSettings.bottom_padding_coefficient
         
-
 class ViewPort:
 
     px_per_meter = 1.0
@@ -153,6 +154,8 @@ class ViewPort:
             sw = self.px_per_meter * self.window.ship_image.get_width() * .07
             if(sw < AppSettings.ship_min_height_px):
                sw = AppSettings.ship_min_height_px
+            if(sw > AppSettings.ship_max_height_px):
+               sw = AppSettings.ship_max_height_px
             self.ship_image = pygame.transform.scale(self.window.ship_image, (sw, sw * .6))
 
     def get_background_padding(self):
@@ -182,13 +185,16 @@ class ViewEngine:
             self.seabed.depth_source = DepthSource.ALTIMETER
             if(self.instrument.altimeter_correction):
                 self.seabed.depth_corrected = True
+                self.seabed.depth_active_sv = self.instrument.instantaneous_sound_velocity
                 self.instrument.altitude = (self.instrument.altitude / self.instrument.altimeter_default_sound_velocity) * self.instrument.instantaneous_sound_velocity
             water_depth_m = self.instrument.depth + self.instrument.altitude
         elif(water_depth_m != None):
             #altimeter is not active use echosounder
             if(AppSettings.echosounder_sv_correction and self.instrument.depth > water_depth_m / 2):
-                water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity
                 self.seabed.depth_corrected = True
+                self.seabed.depth_active_sv = self.instrument.average_sound_velocity
+                water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity
+                
 
         self.seabed.set_water_depth(water_depth_m, self.viewport.screen_top_meters)
 
@@ -202,7 +208,7 @@ class ViewEngine:
         tripline_changed = False
         #check if new tripline is different than the active tripline
         if(new_tripline != self.triplines.active_tripline):
-            print('hit tripline')
+            console.dhtb_console.add_message("hit tripline")
             tripline_changed = True
         
         #redraw the screen if changed
@@ -219,24 +225,19 @@ class ViewEngine:
 
 
     def on_seabed_padding_changed(self, lower_threshold, upper_threshold):
-        print("seabed padding has changed")
+        console.dhtb_console.add_message("seabed padding changed")
         self.viewport.set_top_and_bottom_meters(self.viewport.screen_top_meters, lower_threshold)
         self.triplines.set_triplines(self.seabed.water_depth, self.instrument.depth)
         #self.triplines.set_triplines(upper_threshold, self.instrument.depth)
 
     def on_tripline_changed(self, new_ceiling):
-        print("Active Tripline is now: " + str(new_ceiling))
+        console.dhtb_console.add_message("active tripline is now " + str(new_ceiling))
         self.viewport.set_top_and_bottom_meters(new_ceiling, self.seabed.water_depth_lower_threshold)
 
 class Triplines:
     
     def __init__(self, initial_water_depth_m, initial_instrument_depth_m, on_tripline_changed = None):
         self._on_tripline_changed = on_tripline_changed
-        #self._surface_padding = self.get_surface_padding(initial_instrument_depth_m)
-        #self.depth_triplines = self.altitude_triplines.copy()
-        #self.depth_triplines.insert(0,self._surface_padding)
-        #self.active_tripline = self.depth_triplines[0]
-        #self.water_depth_last_calc = initial_water_depth_m
         self.set_triplines(initial_water_depth_m, initial_instrument_depth_m)
 
     def set_triplines(self, water_depth_m, instrument_depth_m):
@@ -249,8 +250,8 @@ class Triplines:
 
         #todo fix bug where working depth is less than or close to the surface
 
-        #insert a tripline right near the bottom for "bottoming ops"
-        if(working_depth > AppSettings.bottom_window_m + 20):
+        #insert a tripline for near-bottom operations if current water depth is 20m more than the user-defined bottom window
+        if(working_depth > AppSettings.bottom_window_m):
             self.depth_triplines.insert(1, int(working_depth))
         window_height = working_depth
         last_window_top = 0

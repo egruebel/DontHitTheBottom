@@ -2,8 +2,8 @@ import pygame
 from app_settings import AppSettings
 from enum import Enum
 
-FONT = pygame.font.SysFont(AppSettings.font, AppSettings.font_size)
-LITTLEFONT = pygame.font.SysFont(AppSettings.font, int(AppSettings.font_size / 2))
+#FONT = pygame.font.SysFont(AppSettings.font, AppSettings.font_size)
+#LITTLEFONT = pygame.font.SysFont(AppSettings.font, int(AppSettings.font_size / 2))
 
 class Color():
     ORANGE = [255, 150, 50]
@@ -16,7 +16,6 @@ class Color():
     LIGHTBLUE = [204, 255, 255]
     YELLOW = [255, 255, 153]
     
-
 def render_text(text, x_pos, y_pos, color, screen, font_adjust = 0):
     vertical_offset = 0
     #lines = text.splitlines()
@@ -31,7 +30,8 @@ def render_text(text, x_pos, y_pos, color, screen, font_adjust = 0):
         lbl = f.render(line, True, color)
         screen.blit (lbl, (x_pos, y_pos + vertical_offset))
         vertical_offset += AppSettings.font_size + font_adjust
-    return ((w_max, s[1]))
+    #all indications are that the size returned is in pt even though the pygame docs say px. I'm returning a converted size in px.
+    return ((w_max * .75, s[1] * .75, x_pos, y_pos))
 
 def float2str(num):
     return f'{num:.1f}'
@@ -85,7 +85,6 @@ def draw_dimline(
         #pygame.Vector2(-head_width / 2, -head_height / 2),  # Bottomleft
     ]
 
- 
     # Rotate and translate the head into place
     translation = pygame.Vector2(0, dimline.length()).rotate(-angle)
     for i in range(len(head_verts)):
@@ -161,7 +160,6 @@ def draw_arrow(
         pygame.Vector2(-head_width / 2, -head_height / 2),  # Bottomleft
     ]
 
- 
     # Rotate and translate the head into place
     translation = pygame.Vector2(0, arrow.length() - (head_height / 2)).rotate(-angle)
     for i in range(len(head_verts)):

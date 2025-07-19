@@ -64,11 +64,11 @@ class CTD:
 
         #adjust the sliding window of altimeter data
         self.altimeter_history.append(altitude)
-        while(len(self.altimeter_history) > AppSettings.altimeter_hit_count):
+        while(len(self.altimeter_history) > AppSettings.altimeter_filtering_window):
             self.altimeter_history.pop(0)
 
-        num = int(AppSettings.altimeter_hit_count * .25)
-        ms = AppSettings.altimeter_hit_count - num
+        num = int(AppSettings.altimeter_filtering_window * .25)
+        ms = AppSettings.altimeter_filtering_window - num
         max_std = 3
 
         size = len(self.altimeter_history)
