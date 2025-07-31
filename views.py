@@ -195,7 +195,6 @@ class ViewEngine:
                 self.seabed.depth_active_sv = self.instrument.average_sound_velocity
                 water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity
                 
-
         self.seabed.set_water_depth(water_depth_m, self.viewport.screen_top_meters)
 
     def set_altimeter(self, altitude):

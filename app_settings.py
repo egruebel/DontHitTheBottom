@@ -48,7 +48,7 @@ class AppSettings:
     #008 shallow with tripline adjustment issue on upcast
     #003 is nice medium case demo
     #004 has tripline adjustment issue
-    playback_mode = True
+    playback_mode = False
     playback_file = "test_casts/EN695_004_test.cnv"
     playback_speed = .002 #seconds to pause between cnv file line scans, larger number = slower
     
@@ -59,7 +59,7 @@ class AppSettings:
     echosounder_nmea_keeldepth_index = 8 #NMEA comma index of the vessel keel depth
     echosounder_nmea_sv_index = 9 #NMEA comma index of the echosounder sound velocity
 
-    seasave_ip = '192.168.1.34'
+    seasave_ip = '127.0.0.1'
     seasave_port = 49161
     seasave_depth_qualifier = 'Depth [salt water, m]'
     seasave_altimeter_qualifier = 'Altimeter [m]'
