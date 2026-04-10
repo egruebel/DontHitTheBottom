@@ -34,9 +34,10 @@ class IOController():
         self.instrument_sv_average = 1500
         if(AppSettings.playback_mode):
             self.io_device = CnvFilePlayback(AppSettings.playback_file, AppSettings.playback_speed, self.io_device_callback)
-            self.io_device.begin_receive()
+            self.io_device.validate_file()
             if(self.io_device.simulate_echosounder):
-                self.echosounder.start_simulate(self.io_device.simulate_max_depth_of_cast, .4)
+                self.echosounder.start_simulate(self.io_device.simulate_max_depth_of_cast + 10, .4)
+            self.io_device.begin_receive()
         else:
             self.io_device = SeasaveApi(AppSettings.seasave_ip, AppSettings.seasave_port, self.io_device_callback)
             self.echosounder.begin_receive()

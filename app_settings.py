@@ -69,3 +69,4 @@ class AppSettings:
     seasave_sv_qualifier = 'Sound Velocity [Chen-Millero, m/s]'
     seasave_sv_avg_qualifier = 'Average Sound Velocity [Chen-Millero, m/s], minP = 20, minS = 20'
     seasave_bottom_depth_qualifier = 'Echosounder Bottom Depth [m]'
+    seasave_bottom_depth_sv_qualifier = 'Echosounder Sound Velocity [m/s]'

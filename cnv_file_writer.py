@@ -27,8 +27,8 @@ class CnvFileWriter:
                 # name 4 = altM: {AppSettings.seasave_altimeter_qualifier}
                 # name 5 = svCM: {AppSettings.seasave_sv_qualifier}
                 # name 6 = avgsvCM: {AppSettings.seasave_sv_avg_qualifier}
-                # name 7 = echoDM: echosounder depth [m]
-                # name 8 = echoSV: echosounder sound velocity [m/s]
+                # name 7 = echoDM: {AppSettings.seasave_bottom_depth_qualifier}
+                # name 8 = echoSV: {AppSettings.seasave_bottom_depth_sv_qualifier}
                 *END*
                 """
                 f.write(header)

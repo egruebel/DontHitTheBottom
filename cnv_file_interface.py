@@ -5,6 +5,7 @@ import console
 import math
 from io_device import IODevice
 
+
 class CnvFileParameter():
 
     def __init__(self, name, qualifier):
@@ -33,26 +34,29 @@ class CnvFilePlayback(IODevice):
 
         self._acquiring = False
 
-        self.depth = 0
-        self.pressure = 0
-        self.altitude = 0
-        self.sv = 0
-        self.sv_avg = 0
+        self.depth = CnvFileParameter('depth', AppSettings.seasave_depth_qualifier)
+        self.pressure = CnvFileParameter('pressure', AppSettings.seasave_pressure_qualifier)
+        self.altitude = CnvFileParameter('altitude', AppSettings.seasave_altimeter_qualifier)
+        self.sv = CnvFileParameter('sv', AppSettings.seasave_sv_qualifier)
+        self.sv_avg = CnvFileParameter('sv_avg', AppSettings.seasave_sv_avg_qualifier)
+        self.bottom_depth = CnvFileParameter('bottom_depth', AppSettings.seasave_bottom_depth_qualifier)
+        self.bottom_depth_sv = CnvFileParameter('bottom_depth_sv', AppSettings.seasave_bottom_depth_sv_qualifier)
 
         #these fields are only for calculating sv if there's enough data to do so
-        self._temp = 0
-        self._salinity = 0
+        self._temp = CnvFileParameter('temp', 'Temperature [ITS-90, deg C]')
+        self._salinity = CnvFileParameter('salinity', 'Salinity, Practical [PSU]')
         
-        #collection for tracking fields in the cnv [qualifier, exists in file, col index, current value]
-        #todo make this a class
-        self.fields = [[AppSettings.seasave_depth_qualifier,False,-1,-99],
-                  [AppSettings.seasave_altimeter_qualifier, False,-1,-99],
-                  [AppSettings.seasave_sv_qualifier, False,-1,-99],
-                  [AppSettings.seasave_pressure_qualifier, False,-1,-99],
-                  [AppSettings.seasave_sv_avg_qualifier, False,-1,-99],
-                  [AppSettings.seasave_bottom_depth_qualifier, False,-1,-99],
-                  ['Temperature [ITS-90, deg C]', False, -1,-99],
-                  ['Salinity, Practical [PSU]', False, -1, -99]]
+        self.fields = {
+            'depth': self.depth,
+            'pressure': self.pressure,
+            'altitude': self.altitude,
+            'sv': self.sv,
+            'sv_avg': self.sv_avg,
+            'temp': self._temp,
+            'salinity': self._salinity,
+            'bottom_depth': self.bottom_depth,
+            'bottom_depth_sv': self.bottom_depth_sv
+        }
      
     @property
     def acquiring(self):
@@ -61,69 +65,63 @@ class CnvFilePlayback(IODevice):
     def initialize_field(self, line):
         #Sea-bird cnv files name their variables in the header like so: "# name 3 = prDM: Pressure, Digiquartz [db]"
         name_array = line.split(': ')
-        #Now get the part equal to " Pressure, Digiquartz [db]" and strip the preceding whitespace
+        #Now get the part after the colon like " Pressure, Digiquartz [db]" and strip the preceding whitespace
         col_name = name_array[1].strip()
-        #Now get the tab delimeted row number for this variable from "# name 3 = prDM"
+        #Now get the tab delimeted column integer for this variable from "# name 3 = prDM"
         #a blank split() argument separates by any whitespace
         col_index = int(name_array[0].split()[2])
-        for field in self.fields:
-            if field[0] == col_name:
-                field[1] = True
-                field[2] = col_index
+
+        #see if the cnv field is one that we need
+        for key, field in self.fields.items():
+            if field.qualifier == col_name:
+                field.exists_in_file = True
+                field.column_index = col_index
 
     def playback_loop(self):
         with open(self.filepath, 'rt', encoding='latin-1') as f:
             #row_context = 0
             begin_reading = False
 
-            #get column idices of required data to run this app
-            depth_index = self.fields[0][2] 
-            altitude_index = self.fields[1][2]
-            sv_index = self.fields[2][2]
-            sv_exists = self.fields[2][1]
-            sv_avg_index = self.fields[4][2]
-            sv_avg_exists = self.fields[4][1]
-            pressure_index = self.fields[3][2]
-            temp_index = self.fields[6][2]
-            salinity_index = self.fields[7][2]
             read_row = 0
             sv_sum = 0
             sv_count = 0
-            header = []
+            #header = []
             for line in f:
                 if(line == '*END*\n'):
                     begin_reading = True
                     continue
                 if(begin_reading):
                     self._acquiring = True
-                    dat = line.split()
-                    self.depth = float(dat[depth_index])
-                    self.altitude = float(dat[altitude_index])
-                    self.pressure = float(dat[pressure_index])
                     read_row += 1
-                    if(self._simulate_sv):
-                        self._temp = float(dat[temp_index])
-                        self._salinity = float(dat[salinity_index])
+                    dat = line.split()
+                    self.depth.value = float(dat[self.depth.column_index])
+                    self.pressure.value = float(dat[self.pressure.column_index])
+                    self.altitude.value = float(dat[self.altitude.column_index])
+                    
+                    if(self.sv.exists_in_file):
+                        self.sv.value = float(dat[self.sv.column_index])
+                    elif(self._simulate_sv):
+                        self._temp.value = float(dat[self._temp.column_index])
+                        self._salinity.value = float(dat[self._salinity.column_index])
                         #this algorithm gives wacky sv. Todo figure out why. 
                         #self.sv = self.chenmillero(self.pressure, self._temp, self._salinity)
-                        self.sv = self.chenmillero_seabird(self.pressure, self._temp, self._salinity)
-                    elif(sv_exists):
-                        self.sv = float(dat[sv_index])
+                        self.sv.value = self.chenmillero_seabird(self.pressure.value, self._temp.value, self._salinity.value)
                     else:
-                        self.sv = 1500
+                        #sv not present, use constant
+                        self.sv.value = 1500
                     
-                    if(self._simulate_sv_avg):
+                    if(self.sv_avg.exists_in_file):
+                        self.sv_avg.value = float(dat[self.sv_avg.column_index])
+                    elif(self._simulate_sv_avg):
                         #keep track of row so we only calculate sv average on the downcast
                         if(read_row <= self._row_of_max_depth):
-                            sv_sum += self.sv
+                            sv_sum += self.sv.value
                             sv_count += 1
-                            self.sv_average = sv_sum / sv_count
-                    elif(sv_avg_exists):
-                        self.sv_average = float(dat[sv_avg_index])
+                            self.sv_avg.value = sv_sum / sv_count
                     else:
-                        self.sv_average = 1500
-                    #row += 1
-                    self.callback(self.depth, self.pressure, self.altitude, self.sv, self.sv_average)
+                        self.sv_avg.value = 1500
+
+                    self.callback(self.depth.value, self.pressure.value, self.altitude.value, self.sv.value, self.sv_avg.value)
                     time.sleep(self.playback_speed)
 
             else:
@@ -132,75 +130,73 @@ class CnvFilePlayback(IODevice):
 
         return
                 
-            
-    def begin_receive(self):
+    def validate_file(self):
         with open(self.filepath, 'rt', encoding='latin-1') as f:
-            #row_context = 0
             begin_reading = False
-            header = []
-
             #read the header and figure out which data is in which rows
             max_cast_depth = 0
             altitude_at_max = AppSettings.altimeter_max_range_m
             read_row = 0
             for line in f:
+
                 if line.startswith('# name'):
-                    #name_data = line.split(': ')
+                    #ingest this cnv file parameter from the header
                     self.initialize_field(line)
 
                 if(line == '*END*\n'):
-                    #we've read past the file header, check the file contains needed fields
-                    if self.fields[0][1] == False:
+                    #we've read past the file header
+                    #set the flag to begin reading data
+                    begin_reading = True
+                    #check the file contains needed fields
+                    if self.depth.exists_in_file == False:
                         #todo gracefully let the user know instead of crashing the application
                         raise Exception(".cnv file is missing the depth field specified in the AppSettings")
-                    if self.fields[1][1] == False:
+                    if self.pressure.exists_in_file == False:
+                        console.dhtb_console.add_warning(".cnv file is missing the pressure field specified in the AppSettings")
+                    if self.altitude.exists_in_file == False:
                         raise Exception(".cnv file is missing the altimeter field specified in the AppSettings") 
-                    if self.fields[2][1] == False:
+                    if self.sv.exists_in_file == False:
                         #sound velocity is missing from the file. If Temp and Salinity exist we can calculate it. 
-                        if self.fields[6][1] == True and self.fields[7][1] == True and self.fields[3][1] == True:
+                        if self._temp.exists_in_file and self._salinity.exists_in_file and self.pressure.exists_in_file:
                             #the file has the T, S, and P needed to calculate SV on the fly
                             self._simulate_sv = True
                             console.dhtb_console.add_message("calculating sound velocity")
                         else:
                             #use constant sound velocity
-                            self.sv = 1500
                             console.dhtb_console.add_warning("cnv file is missing the sound velocity field specified in the AppSettings")
                             console.dhtb_console.add_warning("using a fixed sound velocity of 1500 m/s")
-                        #raise Exception(".cnv file is missing the sound velocity field specified in the AppSettings")
-                    if self.fields[3][1] == False:
-                        console.dhtb_console.add_warning(".cnv file is missing the pressure field specified in the AppSettings")
-                    if self.fields[4][1] == False:
+                    if self.sv_avg.exists_in_file == False:
                         #average sound velocity is missing
-                        #if sv is present in the file or we have enough data to calculate it then that's ok
-                        if self._simulate_sv or self.fields[2][1]:
+                        #if sv is present in the file or we have enough data to calculate sv then that's ok
+                        if self._simulate_sv or self.sv.exists_in_file:
                             self._simulate_sv_avg = True
                             console.dhtb_console.add_message("calculating average sound velocity")
                         else:
                             #use constant average sv
-                            self.sv_average = 1500
                             console.dhtb_console.add_warning("cnv file is missing the average sound velocity field specified in AppSettings")
                             console.dhtb_console.add_warning("using a fixed average sound velocity of 1500 m/s")
-                    if self.fields[5][1] == False:
+                    if self.bottom_depth.exists_in_file == False:
                         self.simulate_echosounder = True
                         console.dhtb_console.add_warning(".cnv file is missing the echosounder field specified in AppSettings")
                         console.dhtb_console.add_warning("simulating echosounder data")
-
-                    begin_reading = True
                     continue
                 
                 if begin_reading and self.simulate_echosounder:
                     #find max depth of cast
+                    #split the tab delimited row into array
                     dat = line.split()
-                    dep = float(dat[self.fields[0][2]])
-                    alt = float(dat[self.fields[1][2]])
+                    #get the data from the column
+                    dep = float(dat[self.fields['depth'].column_index])
+                    alt = float(dat[self.fields['altitude'].column_index])
                     read_row += 1
                     if dep > self.simulate_max_depth_of_cast:
-                        max_cast_depth = dep
-                        altitude_at_max = alt
+                        #new deep world record
                         self.simulate_max_depth_of_cast = dep + alt
                         #keep track of row so we're only averaging sound velocity on the downcast
                         self._row_of_max_depth = read_row
-                    #row += 1
+
+            
+    def begin_receive(self):
         #start a new thread and pump out data to the callback
         x = threading.Thread(target=self.playback_loop, args = ())
         x.start()
