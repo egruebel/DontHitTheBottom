@@ -4,32 +4,37 @@ import time
 import random
 from app_settings import AppSettings
 import console
+from io_device import IODevice
 
-class EchoSounder:
+class EchoSounder(IODevice):
 
     def __init__(self, broadcast_port, receive_callback):
         self.port = broadcast_port
         self.callback = receive_callback
+        self._acquiring = False
         self.depth = None
-        self.sound_velocity = 1500
+        self.sound_velocity = AppSettings.echosounder_default_sv
         self.keel_depth = 5
         self.client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
         self.client.settimeout(8)
         # Enable broadcasting mode
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
+    @property
+    def acquiring(self):
+        return self._acquiring
+
     def sim(self, rand_coeff):
         while True:
-            time.sleep(1.5)
+            self._acquiring = True
             self.depth = self.depth + random.uniform((-1 * rand_coeff), rand_coeff)
-            #self.keel_depth = 5
-            #self.sound_velocity = 1500
             self.callback(self.depth, self.keel_depth, self.sound_velocity)
+            time.sleep(1.5)
+        self._acquiring = False
         return
             
-    def start_simulate(self, start_depth_m, start_sv, rand_coeff):
+    def start_simulate(self, start_depth_m, rand_coeff):
         self.depth = start_depth_m
-        self.sound_velocity = start_sv
         x = threading.Thread(target=self.sim, args = (rand_coeff,))
         x.start()
 
@@ -66,8 +71,10 @@ class EchoSounder:
                         self.depth = float(self.depth)
                     self.keel_depth = float(self.keel_depth)
                     self.sound_velocity = int(self.sound_velocity)
+                    self._acquiring = True
                     self.callback(self.depth, self.keel_depth, self.sound_velocity)
                 except Exception as e:
+                    self._acquiring = False
                     console.dhtb_console.add_error("exception in echosounder", e)
             time.sleep(.2)
 

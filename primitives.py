@@ -1,9 +1,5 @@
 import pygame
 from app_settings import AppSettings
-from enum import Enum
-
-#FONT = pygame.font.SysFont(AppSettings.font, AppSettings.font_size)
-#LITTLEFONT = pygame.font.SysFont(AppSettings.font, int(AppSettings.font_size / 2))
 
 class Color():
     ORANGE = [255, 150, 50]

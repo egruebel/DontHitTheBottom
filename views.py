@@ -29,7 +29,7 @@ class ViewWindow:
         self.horizontal_center = self.width_px * AppSettings.horizontal_center
 
 class Seabed:
-    #todo triplines get all fucked up in very shallow water 8m or so
+    #todo triplines sometimes get all fucked up in very shallow water 8m or so
     def __init__(self, initial_depth_m, initial_ceiling_m, on_padding_changed = None):
         self.water_depth = initial_depth_m 
         self._on_padding_changed = on_padding_changed
@@ -87,9 +87,9 @@ class ViewPort:
     def set_top_and_bottom_meters(self, top, bottom, animate = True):
         if (AppSettings.animate_transitions and animate):
             if(self.thread_lock):
-                #animation in progress, tell it to kill itself
+                #animation is already in progress, tell it to kill itself
                 self.thread_kill = True
-                #wait for it to die
+                #wait for it to die before proceeding
                 while(self.thread_lock):
                       next
             #reset the kill switch
@@ -181,13 +181,13 @@ class ViewEngine:
         self.seabed.depth_corrected = False
 
         #check if altimeter is active and valid
-        if(self.instrument.altimeter_active):
+        if(self.instrument.altimeter.is_tracking):
             self.seabed.depth_source = DepthSource.ALTIMETER
             if(self.instrument.altimeter_correction):
                 self.seabed.depth_corrected = True
                 self.seabed.depth_active_sv = self.instrument.instantaneous_sound_velocity
-                self.instrument.altitude = (self.instrument.altitude / self.instrument.altimeter_default_sound_velocity) * self.instrument.instantaneous_sound_velocity
-            water_depth_m = self.instrument.depth + self.instrument.altitude
+                self.instrument.altimeter.altitude = (self.instrument.altimeter.altitude / AppSettings.altimeter_default_sv) * self.instrument.instantaneous_sound_velocity
+            water_depth_m = self.instrument.depth + self.instrument.altimeter.filtered_altitude
         elif(water_depth_m != None):
             #altimeter is not active use echosounder
             if(AppSettings.echosounder_sv_correction and self.instrument.depth > water_depth_m / 2):
@@ -198,7 +198,10 @@ class ViewEngine:
         self.seabed.set_water_depth(water_depth_m, self.viewport.screen_top_meters)
 
     def set_altimeter(self, altitude):
-        self.instrument.set_altimeter(altitude)
+        self.instrument.altimeter.set_altitude(altitude)
+
+    def set_pressure(self, pressure):
+        self.instrument.pressure = pressure
 
     def set_instrument_depth(self, depth_m):
         self.instrument.set_depth(depth_m)
@@ -247,9 +250,9 @@ class Triplines:
         #this is the area we will generate triplines for
         working_depth = water_depth_m - AppSettings.bottom_window_m
 
-        #todo fix bug where working depth is less than or close to the surface
+        #todo fix bug where working depth is less than or close to the surface ala EN695_010_test.cnv
 
-        #insert a tripline for near-bottom operations if current water depth is 20m more than the user-defined bottom window
+        #insert a tripline for near-bottom operations if current water depth is x meters more than the user-defined bottom window
         if(working_depth > AppSettings.bottom_window_m):
             self.depth_triplines.insert(1, int(working_depth))
         window_height = working_depth

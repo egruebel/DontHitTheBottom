@@ -2,7 +2,7 @@
 
 class AppSettings:
     initial_water_depth = 100 #default water depth when application is started before any inputs from CTD or echosounder
-    tripline_jitter_m = 6 #prevents flapping by raising/lowering the tripline by x meters once the ctd has passed
+    tripline_jitter_m = 3 #prevents flapping by raising/lowering the tripline by x meters once the ctd has passed
     bottom_window_m = 30 #the altitude from the bottom where the display is fully zoomed in for situational awareness
     bottom_padding_coefficient = .14 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
     horizontal_center = .7 #where the CTD is shown in relation to the left side of the screen in %
@@ -12,10 +12,11 @@ class AppSettings:
     ship_min_height_px = 22 #prevents ship from being too small in very deep water
     ship_max_height_px = 500 #prevents ship from being too large in shallow water
         
-    altimeter_max_range_m = 100 #max range in m that altimeter can detect
-    altimeter_minimum_viable_m = 2 #lowest altimeter reading in m which could be considered good
-    altimeter_filtering_window = 25 #number of valid altimeter readings needed to use it as a depth source
-    altimeter_averaging = False #use the median average of the last n altimeter readings where n = altimeter_hit_count
+    altimeter_max_range_m = 98 #max range in m that altimeter can detect (programmed range - 1)
+    altimeter_blanking_range_m = 4 #any altimeter hits < this value will be ignored. This is set to zero when within the reliable range (below).
+    altimeter_reliable_range_m = 75 #the range where altitude readings become solid/reliable
+    altimeter_filtering_window = 7 #size of the slidng window used for assessing altimeter data
+    altimeter_averaging = False #use the median average of the last n altimeter readings
     altimeter_default_sv = 1500 #sound velocity in meters/sec that the altimeter uses in firmware
     altimeter_sv_correction = True #correct the altimeter reading using the instantaneous sv from the CTD 
 
@@ -28,8 +29,8 @@ class AppSettings:
     title = "Don't Hit the Bottom"
     
     #common user preference settings
-    frame_rate = 200 #frames per second
-    scroll_speed = .02 #pixels to scroll the screen between frames
+    frame_rate = 30 #frames per second
+    scroll_speed = .1 #pixels to scroll the screen between frames
     animate_transitions = True #animate the zoom in/out events
     default_screen_size = [1100,800] #width, height
     echosounder_color = [255,100,90] #RGB color to use for the bottom trace when the echosounder is displayed
@@ -42,15 +43,16 @@ class AppSettings:
     draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
     draw_screen_top = False #draw the meters at screen top
     draw_horizon = False #draw the calculated horizon position
+    draw_params = True #draw misc calculated parameters
        
     #001 hit the bottom (for real)
     #005 is deep with altim issue
     #008 shallow with tripline adjustment issue on upcast
     #003 is nice medium case demo
     #004 has tripline adjustment issue
-    playback_mode = False
-    playback_file = "test_casts/EN695_004_test.cnv"
-    playback_speed = .002 #seconds to pause between cnv file line scans, larger number = slower
+    playback_mode = True
+    playback_file = "test_casts/at5027002_1db.cnv"
+    playback_speed = .01 #seconds to pause between cnv file line scans, larger number = slower
     
     echosounder_udp_port = 16008 #UDP broadcast port to listen for NMEA
     echosounder_default_sv = 1500 #sound velocity in meters/sec
@@ -65,5 +67,5 @@ class AppSettings:
     seasave_altimeter_qualifier = 'Altimeter [m]'
     seasave_pressure_qualifier = 'Pressure, Digiquartz [db]'
     seasave_sv_qualifier = 'Sound Velocity [Chen-Millero, m/s]'
-    seasave_sv_avg_qualifier = 'Average Sound Velocity [Chen-Millero, m/s]'
+    seasave_sv_avg_qualifier = 'Average Sound Velocity [Chen-Millero, m/s], minP = 20, minS = 20'
     seasave_bottom_depth_qualifier = 'Echosounder Bottom Depth [m]'
