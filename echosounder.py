@@ -24,18 +24,19 @@ class EchoSounder(IODevice):
     def acquiring(self):
         return self._acquiring
 
-    def sim(self, rand_coeff):
+    def sim(self, rand_coeff, sounding_interval_s):
         while True:
             self._acquiring = True
+            #add a random value between -X and +X to make the bottom change
             self.depth = self.depth + random.uniform((-1 * rand_coeff), rand_coeff)
             self.callback(self.depth, self.keel_depth, self.sound_velocity)
-            time.sleep(1.5)
+            time.sleep(sounding_interval_s)
         self._acquiring = False
         return
             
-    def start_simulate(self, start_depth_m, rand_coeff):
+    def start_simulate(self, start_depth_m, rand_coeff, sounding_interval_s):
         self.depth = start_depth_m
-        x = threading.Thread(target=self.sim, args = (rand_coeff,))
+        x = threading.Thread(target=self.sim, args = (rand_coeff, sounding_interval_s))
         x.start()
 
     def connect(self):

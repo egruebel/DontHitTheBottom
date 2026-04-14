@@ -17,9 +17,9 @@ class Altimeter:
         self.quality = 0
         self.is_tracking = False
         self.raw_altitude_history = []
-        self.raw_window = []
-        self.filtered_window = []
-        self.quality_window = []
+        self._raw_window = []
+        self._filtered_window = []
+        self._quality_window = []
         self.blanking_range = AppSettings.altimeter_blanking_range_m
         self.max_range = AppSettings.altimeter_max_range_m
         self.default_sound_velocity = AppSettings.altimeter_default_sv
@@ -29,21 +29,22 @@ class Altimeter:
 
     def set_altitude(self, altitude):
 
-        self.raw_window.append(altitude)
+        self._raw_window.append(altitude)
         self.raw_altitude_history.append(altitude) #todo dont forget to trim this when it's not displayed
+        self.altitude = altitude
 
         filter_window_full = False
-        if(len(self.raw_window) >= AppSettings.altimeter_filtering_window):
+        if(len(self._raw_window) >= AppSettings.altimeter_filtering_window):
             filter_window_full = True
         
         #calculate the Mean Average Distance using the median of the dataset
-        median = statistics.median(self.raw_window)
-        distances = [abs(x-median) for x in self.raw_window]
+        median = statistics.median(self._raw_window)
+        distances = [abs(x-median) for x in self._raw_window]
         mad = statistics.mean(distances)
         
         #if dataset is tight, use it. Otherwise correct up to n values and see if the messiness improves.
         corrections = 1
-        raw_copy = self.raw_window.copy()
+        raw_copy = self._raw_window.copy()
         filtered = False
         while(filter_window_full and mad > 10 and corrections > 0):
             #find the altitude with the highest error
@@ -58,7 +59,7 @@ class Altimeter:
             corrections -= 1
 
         self.filtered_altitude = statistics.median(raw_copy)
-        self.filtered_window.append(self.filtered_altitude)
+        self._filtered_window.append(self.filtered_altitude)
 
         altitude_within_range = False
         if(self.filtered_altitude <= self.max_range and self.filtered_altitude >= self.blanking_range):
@@ -75,8 +76,8 @@ class Altimeter:
             #data is messy or not in range
             self.quality = 1
 
-        self.quality_window.append(self.quality)
-        if(1 not in self.quality_window):
+        self._quality_window.append(self.quality)
+        if(1 not in self._quality_window):
             if(not self.is_tracking):
                 console.dhtb_console.add_message('altimeter tracking on')
                 self.is_tracking = True
@@ -93,10 +94,10 @@ class Altimeter:
             
 
         #shrink the sliding window(s) to the filter size setting.
-        while(len(self.raw_window) > AppSettings.altimeter_filtering_window):
-            self.raw_window.pop(0)
-            self.filtered_window.pop(0)
-            self.quality_window.pop(0)
+        while(len(self._raw_window) > AppSettings.altimeter_filtering_window):
+            self._raw_window.pop(0)
+            self._filtered_window.pop(0)
+            self._quality_window.pop(0)
     
 
 class CTD:

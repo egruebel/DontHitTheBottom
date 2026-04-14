@@ -14,7 +14,7 @@ class CnvFileWriter:
 
     def start_new(self):
         self.file_time = datetime.datetime.now()
-        self.active_file = 'dhtb_' + filetime.strftime('%Y%m%d%H%M%S') + '.cnv'
+        self.active_file = 'dhtb_' + self.file_time.strftime('%Y%m%d%H%M%S') + '.cnv'
         try:
             with open(self.folder + self.active_file, "x") as f:
                 header = f"""* Don't Hit The Bottom Data File
@@ -41,8 +41,8 @@ class CnvFileWriter:
         try:
             with open(self.folder + self.active_file, 'a') as f:
                 self.scanline += 1
-                seconds = (datetime.datetime.now() - self.file_time).total_seconds
-                f.write(f'\n{self.scanline}\t{seconds}\t{depth}\t{altitude}\t{sv}\t{sv_avg}\t{echo}\t{echo_sv}')
+                seconds_elapsed = (datetime.datetime.now() - self.file_time).total_seconds
+                f.write(f'\n{self.scanline}\t{seconds_elapsed}\t{depth}\t{pressure}\t{altitude}\t{sv}\t{sv_avg}\t{echo}\t{echo_sv}')
         except Exception as e:
             console.dhtb_console.add_error('File IO error while writing line to data file')
             console.dhtb_console.add_error(e)

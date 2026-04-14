@@ -38,19 +38,22 @@ class Seabed:
         self.water_depth_lower_threshold = 0
         self._set_water_depth_thresholds()
         self.history = []
-        self.sound_velocity_m_s = AppSettings.echosounder_default_sv
+        self.sound_velocity = AppSettings.echosounder_default_sv
         self.depth_source = DepthSource.NONE
         self.depth_corrected = False
-        self.depth_active_sv = 0
 
-    def set_water_depth(self, depth_m, view_window_ceiling_m):
+    def set_water_depth(self, depth_m, source, sv, corrected, view_window_ceiling_m):
         self.water_depth = depth_m
+        self.depth_source = source
+        self.sound_velocity = sv
+        self.depth_corrected = corrected
         self.history.append([self.depth_source.value, self.depth_corrected, depth_m])
         if(depth_m == None):
             return
-        if (self.water_depth > self.water_depth_lower_threshold) or (self.water_depth < self.water_depth_upper_threshold):
+        if(self.water_depth > self.water_depth_lower_threshold) or (self.water_depth < self.water_depth_upper_threshold):
             self.adjust_padding(view_window_ceiling_m)
-            if self._on_padding_changed: self._on_padding_changed(self.water_depth_lower_threshold, self.water_depth_upper_threshold)
+            if(self._on_padding_changed): 
+                self._on_padding_changed(self.water_depth_lower_threshold, self.water_depth_upper_threshold)
             
     def adjust_padding(self, view_window_ceiling_m):
         self.depth_padding = self._get_water_depth_padding(view_window_ceiling_m)
@@ -78,7 +81,7 @@ class ViewPort:
         self.instrument = instrument
         self.thread_lock = False
         self.thread_kill = False
-        self._redraw
+        self._redraw()
 
     def resize(self):
         #called when window is resized by user
@@ -176,26 +179,26 @@ class ViewEngine:
         self.triplines._on_tripline_changed = self.on_tripline_changed
         self.viewport = ViewPort(vw, self.instrument, self.triplines.active_tripline, self.seabed.water_depth_lower_threshold)
         
-    def set_water_depth(self, water_depth_m):
-        self.seabed.depth_source = DepthSource.ECHO
-        self.seabed.depth_corrected = False
+    def set_water_depth(self, water_depth_m, sv):
+        source = DepthSource.ECHO
+        corrected = False
+        sound_velocity = sv
 
         #check if altimeter is active and valid
         if(self.instrument.altimeter.is_tracking):
-            self.seabed.depth_source = DepthSource.ALTIMETER
-            if(self.instrument.altimeter_correction):
-                self.seabed.depth_corrected = True
-                self.seabed.depth_active_sv = self.instrument.instantaneous_sound_velocity
-                self.instrument.altimeter.altitude = (self.instrument.altimeter.altitude / AppSettings.altimeter_default_sv) * self.instrument.instantaneous_sound_velocity
-            water_depth_m = self.instrument.depth + self.instrument.altimeter.filtered_altitude
+            source = DepthSource.ALTIMETER
+            corrected = True
+            sound_velocity = self.instrument.instantaneous_sound_velocity
+            altitude_corrected = (self.instrument.altimeter.filtered_altitude / AppSettings.altimeter_default_sv) * self.instrument.instantaneous_sound_velocity    
+            water_depth_m = self.instrument.depth + altitude_corrected
         elif(water_depth_m != None):
             #altimeter is not active use echosounder
             if(AppSettings.echosounder_sv_correction and self.instrument.depth > water_depth_m / 2):
-                self.seabed.depth_corrected = True
-                self.seabed.depth_active_sv = self.instrument.average_sound_velocity
-                water_depth_m = (water_depth_m / self.seabed.sound_velocity_m_s) * self.instrument.average_sound_velocity
+                corrected = True
+                sound_velocity = self.instrument.average_sound_velocity
+                water_depth_m = (water_depth_m / sv) * self.instrument.average_sound_velocity
                 
-        self.seabed.set_water_depth(water_depth_m, self.viewport.screen_top_meters)
+        self.seabed.set_water_depth(water_depth_m, source, sound_velocity, corrected, self.viewport.screen_top_meters)
 
     def set_altimeter(self, altitude):
         self.instrument.altimeter.set_altitude(altitude)

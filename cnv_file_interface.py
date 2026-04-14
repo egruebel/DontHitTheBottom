@@ -95,7 +95,8 @@ class CnvFilePlayback(IODevice):
                     read_row += 1
                     dat = line.split()
                     self.depth.value = float(dat[self.depth.column_index])
-                    self.pressure.value = float(dat[self.pressure.column_index])
+                    if(self.pressure.exists_in_file):
+                        self.pressure.value = float(dat[self.pressure.column_index])
                     self.altitude.value = float(dat[self.altitude.column_index])
                     
                     if(self.sv.exists_in_file):

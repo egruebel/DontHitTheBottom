@@ -121,7 +121,7 @@ while not done:
     viewengine.set_altimeter(acq_device.instrument_altitude)
     viewengine.instrument.instantaneous_sound_velocity = acq_device.instrument_sv
     viewengine.instrument.average_sound_velocity = acq_device.instrument_sv_average
-    viewengine.set_water_depth(acq_device.echosounder_depth)
+    viewengine.set_water_depth(acq_device.echosounder_depth, acq_device.echosounder_sv)
     
 
     #if ctd is not acquiring in playback or seasave then don't show it
@@ -179,7 +179,7 @@ while not done:
         depth_text_offset = render_text(str_depth_val, depth_text_xpos, depth_text_ypos, depth_source_text_color, screen, 20)
         depth_text_offset = render_text(depth_source_text, depth_text_xpos, depth_text_ypos + (depth_text_offset[1]), depth_source_text_color, screen, -5)
         if(viewengine.seabed.depth_corrected):
-            render_text("corrected for svl=" + str(int(viewengine.seabed.depth_active_sv)) + "m/s", depth_text_xpos, depth_text_offset[3] + (depth_text_offset[1]), depth_source_text_color, screen, -18)
+            render_text("corrected for svl=" + str(int(viewengine.seabed.sound_velocity)) + "m/s", depth_text_xpos, depth_text_offset[3] + (depth_text_offset[1]), depth_source_text_color, screen, -18)
 
     #draw countdown
     #if greater than 5m from the bottom display integer, if very close display decimal for precision
@@ -220,8 +220,10 @@ while not done:
 
     if AppSettings.draw_params:
         yp = viewengine.viewport.window.height_px/2
-        render_text((float2str(viewengine.instrument.instantaneous_sound_velocity)) + 'm/s', 0, yp, Color.WHITE, screen, -18)
-        render_text((float2str(viewengine.instrument.average_sound_velocity)) + 'm/s', 0, yp + 10, Color.WHITE, screen, -18)
+        render_text('ctd_sv ' + (float2str(viewengine.instrument.instantaneous_sound_velocity)) + 'm/s', 0, yp, Color.WHITE, screen, -18)
+        render_text('ctd_sv_avg ' + (float2str(viewengine.instrument.average_sound_velocity)) + 'm/s', 0, yp + 20, Color.WHITE, screen, -18)
+        render_text('echosounder_sv ' + (float2str(acq_device.echosounder_sv)) + 'm/s', 0, yp + 40, Color.WHITE, screen, -18)
+        render_text('engine_sv ' + (float2str(viewengine.seabed.sound_velocity)) + 'm/s', 0, yp + 60, Color.WHITE, screen, -18)
 
     pygame.display.flip()
     clock.tick(AppSettings.frame_rate)
