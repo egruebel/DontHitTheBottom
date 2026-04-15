@@ -94,6 +94,9 @@ def draw_threaded_surface(surface, position_x_y):
 console.init()
 
 acq_device = IOController()
+speed_button = Button(200,200,'images/faster_icon.png', .3)
+slow_button = Button(150,200,'images/slower_icon.png', .3)
+reset_button = Button(100,200,'images/reset_icon.png', .3)
 
 #main program loop
 while not done:
@@ -105,6 +108,8 @@ while not done:
             window.resize(event.size)
             viewport.resize()
             screen = pygame.display.set_mode((window.width_px, window.height_px), pygame.RESIZABLE)
+    
+    
 
     #screen background, draw this first so everything else is on top
     #draw the sky image
@@ -123,6 +128,15 @@ while not done:
     viewengine.instrument.average_sound_velocity = acq_device.instrument_sv_average
     viewengine.set_water_depth(acq_device.echosounder_depth, acq_device.echosounder_sv)
     
+    if(speed_button.draw(screen)):
+        if(acq_device.io_device.playback_speed >= .002):
+            acq_device.io_device.playback_speed -= .001
+        console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
+    if(slow_button.draw(screen)):
+        acq_device.io_device.playback_speed += .001
+        console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
+    if(reset_button.draw(screen)):
+        console.dhtb_console.add_message('Reset not implemented')
 
     #if ctd is not acquiring in playback or seasave then don't show it
     #todo i'm not thrilled about this method using zero instead of some kind of null

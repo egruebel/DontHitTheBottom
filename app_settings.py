@@ -52,7 +52,7 @@ class AppSettings:
     #004 has tripline adjustment issue
     playback_mode = True
     playback_file = "test_casts/EN695_003_test.cnv"
-    playback_speed = .005 #seconds to pause between cnv file line scans, larger number = slower
+    playback_speed = .01 #seconds to pause between cnv file line scans, larger number = slower
     
     echosounder_udp_port = 16008 #UDP broadcast port to listen for NMEA
     echosounder_default_sv = 1505 #sound velocity in meters/sec
