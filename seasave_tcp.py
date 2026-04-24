@@ -8,10 +8,15 @@ from io_device import IODevice
 
 class SeasaveApi(IODevice):
     
-    def __init__(self, ip, port, receive_callback):
+    def __init__(self, ip, port, receive_callback, connection_callback):
         self.ip = ip
         self.port = port
-        self.callback = receive_callback
+        self.receive_callback = receive_callback
+        self.connection_callback = connection_callback
+
+        self._reader = threading.Thread()
+        self._kill = threading.Event()
+
         self.field_list = []
         self.connected = False
         self._acquiring = False
@@ -26,15 +31,38 @@ class SeasaveApi(IODevice):
         self.sv_qualifier = AppSettings.seasave_sv_qualifier
         self.sv_avg_qualifier = AppSettings.seasave_sv_avg_qualifier
 
-        self.depth = 0
-        self.pressure = 0
-        self.altitude = 0
-        self.sv = 0
-        self.sv_average = 0
+        self.depth
+        self.pressure
+        self.altitude
+        self.sv
+        self.sv_average
 
-    @property
-    def acquiring(self):
+        self.set_defaults()
+
+    def acquiring(self, status = True):
+        if(self._acquiring != status):
+            #the state of the IO has changed
+            self._acquiring = status
+            #there's been a disconnect set all of the output params to their defaults
+            if(status == False):
+                self.set_defaults()
+                self.receive_callback(self.depth, self.pressure, self.altitude, self.sv, self.sv_average)
+            self.connection_callback(status)
         return self._acquiring
+    
+    def kill(self):
+        #this will kill the read thread so we can dispose of the object
+        self._kill.set()
+        #this will block until the thread is released
+        self._reader.join()
+        self.acquiring(False)
+
+    def set_defaults(self):
+        self.depth = None
+        self.pressure = None
+        self.altitude = None
+        self.sv = None
+        self.sv_average = None
 
     #after connecting to the server, Seasave will reply with a list of the fields it's configured for in the TCP/IP output settings
     def get_field_list(self, seasave_settings):
@@ -70,7 +98,7 @@ class SeasaveApi(IODevice):
     def check_minimum_viable_fields(self):
         #this application requires five fields from Seasave. Depth (m), pressure (db), sound velocity (avg and immediate), and altimeter (m)
         #this function lets the user know if a meaningful way that they have Seasave set up incorrectly by throwing an exception in the 'connect' method
-        
+        #todo instead of throwing exceptions let the user know in a graceful way
         if not any(self.depth_qualifier in subl for subl in self.field_list):
             raise Exception("Required parameter Depth was not found in Seasave TCP/IP output")
         if not any(self.pressure_qualifier in subl for subl in self.field_list):
@@ -88,7 +116,7 @@ class SeasaveApi(IODevice):
         self.altitude = self.get_value_from_fieldlist(self.altimeter_qualifier)
         self.sv = self.get_value_from_fieldlist(self.sv_qualifier)
         self.sv_average = self.get_value_from_fieldlist(self.sv_avg_qualifier)
-        self.callback(self.depth, self.pressure, self.altitude, self.sv, self.sv_average)
+        self.receive_callback(self.depth, self.pressure, self.altitude, self.sv, self.sv_average)
 
     def receive_loop(self, sock):
         try:
@@ -101,17 +129,17 @@ class SeasaveApi(IODevice):
                         raise Exception("error in seasave acquisition, incomplete data received")
                     seasave_data += sock.recv(self.buffer_size)
                 #it's important that these two methods don't hide exceptions, so no try/except blocks
-                self._acquiring = True
+                self.acquiring(True)
                 self.update_field_list(seasave_data)
                 self.deliver_data()
         except socket.timeout as e:
-            self._acquiring = False
+            self.acquiring(False)
             #timeout is likely because the seasave is not actively acquiring
             console.dhtb_console.add_warning("seasave connection timed out")
             self.manual_disconnect = True
             #self.close_socket(sock)
         except Exception as e:
-            self._acquiring = False
+            self.acquiring(False)
             console.dhtb_console.add_error("error in seasave receive loop", e)
 
     def connect(self):
@@ -163,8 +191,8 @@ class SeasaveApi(IODevice):
             time.sleep(5)
 
     def begin_receive(self):
-        r = threading.Thread(target = self.acquisition_loop)
-        r.start()
+        self._reader = threading.Thread(target = self.acquisition_loop)
+        self._reader.start()
 
 
 

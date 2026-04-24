@@ -8,6 +8,7 @@ import time
 #    INFO = 0
 #    WARNING = 1
 #    ERROR = 2
+#    DEBUG = 3
 
 class RoundRobinConsole:
 
@@ -23,6 +24,9 @@ class RoundRobinConsole:
 
     def add_error(self, message, details):
         self.message_queue.append([message, 2, datetime.now()])
+
+    def add_debug(self, message):
+        self.message_queue.append([message, 3, datetime.now()])
 
     def console_loop(self):
         while(True):

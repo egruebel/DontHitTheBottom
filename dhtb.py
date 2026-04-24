@@ -54,11 +54,14 @@ def draw_raw_altimeter_history():
     h_length = len(raw_history)
     x = window.horizontal_center - ( scroll_speed * h_length)
     for i in range(h_length):
-        depth = raw_history[i] + viewengine.instrument.history[i]
-        y = viewport.get_ypos_px(depth)
+        alt = raw_history[i]
+        if(alt == None):
+            return
+        depth = viewengine.instrument.history[i]
+        y = viewport.get_ypos_px(alt + depth)
         x += scroll_speed
         #don't draw if zero (instrument not acquiring)
-        if(depth != 0 and raw_history[i] > viewengine.instrument.altimeter.blanking_range and raw_history[i] < viewengine.instrument.altimeter.max_range):
+        if(alt > viewengine.instrument.altimeter.blanking_range and alt < viewengine.instrument.altimeter.max_range):
             pygame.draw.circle(screen, Color.YELLOW, (x,y), 1)
 
 def draw_bathy_history():
@@ -93,7 +96,10 @@ def draw_threaded_surface(surface, position_x_y):
 #the console is used throughout the application for user display and logging
 console.init()
 
+#the acq device is the io class to accomodate many different types of sensors
 acq_device = IOController()
+
+#declare playback buttons even if we're not in playback mode
 speed_button = Button(200,200,'images/faster_icon.png', .3)
 slow_button = Button(150,200,'images/slower_icon.png', .3)
 reset_button = Button(100,200,'images/reset_icon.png', .3)
@@ -108,8 +114,13 @@ while not done:
             window.resize(event.size)
             viewport.resize()
             screen = pygame.display.set_mode((window.width_px, window.height_px), pygame.RESIZABLE)
-    
-    
+
+    viewengine.set_instrument(acq_device.instrument_depth, 
+                              acq_device.instrument_pressure, 
+                              acq_device.instrument_altitude, 
+                              acq_device.instrument_sv, 
+                              acq_device.instrument_sv_average)
+    viewengine.set_water_depth(acq_device.echosounder_depth, acq_device.echosounder_sv)
 
     #screen background, draw this first so everything else is on top
     #draw the sky image
@@ -121,28 +132,20 @@ while not done:
     shy = viewport.ship_image.get_height()
     draw_threaded_surface(viewport.ship_image,(window.horizontal_center - shx, viewport.get_background_padding() - shy))
 
-    viewengine.set_instrument_depth(acq_device.instrument_depth)
-    viewengine.set_pressure(acq_device.instrument_pressure)
-    viewengine.set_altimeter(acq_device.instrument_altitude)
-    viewengine.instrument.instantaneous_sound_velocity = acq_device.instrument_sv
-    viewengine.instrument.average_sound_velocity = acq_device.instrument_sv_average
-    viewengine.set_water_depth(acq_device.echosounder_depth, acq_device.echosounder_sv)
-    
-    if(speed_button.draw(screen)):
-        if(acq_device.io_device.playback_speed >= .002):
-            acq_device.io_device.playback_speed -= .001
-        console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
-    if(slow_button.draw(screen)):
-        acq_device.io_device.playback_speed += .001
-        console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
-    if(reset_button.draw(screen)):
-        console.dhtb_console.add_message('Reset not implemented')
-
-    #if ctd is not acquiring in playback or seasave then don't show it
-    #todo i'm not thrilled about this method using zero instead of some kind of null
-    #if(not acq_device.acquiring):
-    #    app_instrument_depth = 0
-    #    app_altitude = 0
+    if(AppSettings.playback_mode):
+        if(speed_button.draw(screen)):
+            if(acq_device.io_device.playback_speed >= .002):
+                acq_device.io_device.playback_speed -= .001
+            console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
+        if(slow_button.draw(screen)):
+            acq_device.io_device.playback_speed += .001
+            console.dhtb_console.add_message('playback speed = ' + str(int(1 / acq_device.io_device.playback_speed)) + ' scans per second')
+        if(reset_button.draw(screen)):
+            #first kill the file reader thread
+            acq_device.io_device.kill()
+            #then refresh the IOController
+            #acq_device = IOController()
+            console.dhtb_console.add_message('Restarting file playback')
 
     ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
@@ -166,11 +169,9 @@ while not done:
     draw_raw_altimeter_history()
 
     #draw the instrument if it's acquiring
-    if(acq_device.io_device.acquiring):
+    if(acq_device.io_device._acquiring):
         screen.blit(viewengine.instrument.image_scaled, ((window.horizontal_center) - (viewengine.instrument.width_px / 2),ctd_ypos, viewengine.instrument.width_px, viewengine.instrument.height_px))
-    
         #draw instrument depth value
-        #wd = render_text(float2str(viewengine.instrument.pressure) + 'dB', (window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos - 30, Color.LIGHTBLUE, screen, 20)
         wd = render_text(float2str(viewengine.instrument.depth) + 'm', (window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos, Color.LIGHTBLUE, screen, 20)
 
     #draw the depth source and value if it's acquiring or not timed out "None"
@@ -234,10 +235,18 @@ while not done:
 
     if AppSettings.draw_params:
         yp = viewengine.viewport.window.height_px/2
-        render_text('ctd_sv ' + (float2str(viewengine.instrument.instantaneous_sound_velocity)) + 'm/s', 0, yp, Color.WHITE, screen, -18)
-        render_text('ctd_sv_avg ' + (float2str(viewengine.instrument.average_sound_velocity)) + 'm/s', 0, yp + 20, Color.WHITE, screen, -18)
-        render_text('echosounder_sv ' + (float2str(acq_device.echosounder_sv)) + 'm/s', 0, yp + 40, Color.WHITE, screen, -18)
-        render_text('engine_sv ' + (float2str(viewengine.seabed.sound_velocity)) + 'm/s', 0, yp + 60, Color.WHITE, screen, -18)
+        values = [
+            'ctd_sv ' + (float2str(viewengine.instrument.sound_velocity)) + 'm/s',
+            'ctd_sv_avg ' + (float2str(viewengine.instrument.average_sound_velocity)) + 'm/s',
+            'echosounder_sv ' + (float2str(acq_device.echosounder_sv)) + 'm/s',
+            'applied_sv ' + (float2str(viewengine.seabed.sound_velocity)) + 'm/s',
+            'inst_depth ' + (float2str(acq_device.instrument_depth)),
+            'inst_pressure ' + (float2str(acq_device.instrument_pressure)),
+            'inst_altitude ' + (float2str(acq_device.instrument_altitude)),
+            'acquiring ' + str(acq_device.io_device._acquiring)
+        ]
+        render_text(values, 0, yp, Color.WHITE,screen, -20)
+
 
     pygame.display.flip()
     clock.tick(AppSettings.frame_rate)

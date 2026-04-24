@@ -141,6 +141,7 @@ class ViewPort:
             top_m = 0
         #calc the window px per meter which is different than the current viewport px per meter depending on ceiling
         window_px_per_meter = self.window.height_px / self.screen_bottom_meters
+        #the top_px is the horizontal of the background image representing the depth of the top of the screen
         top_px = top_m * window_px_per_meter
         height = self.window.height_px - top_px
         #copy and scale the raw background image to the window size before manipulating
@@ -188,8 +189,8 @@ class ViewEngine:
         if(self.instrument.altimeter.is_tracking):
             source = DepthSource.ALTIMETER
             corrected = True
-            sound_velocity = self.instrument.instantaneous_sound_velocity
-            altitude_corrected = (self.instrument.altimeter.filtered_altitude / AppSettings.altimeter_default_sv) * self.instrument.instantaneous_sound_velocity    
+            sound_velocity = self.instrument.sound_velocity
+            altitude_corrected = (self.instrument.altimeter.filtered_altitude / AppSettings.altimeter_default_sv) * self.instrument.sound_velocity    
             water_depth_m = self.instrument.depth + altitude_corrected
         elif(water_depth_m != None):
             #altimeter is not active use echosounder
@@ -200,20 +201,34 @@ class ViewEngine:
                 
         self.seabed.set_water_depth(water_depth_m, source, sound_velocity, corrected, self.viewport.screen_top_meters)
 
-    def set_altimeter(self, altitude):
-        self.instrument.altimeter.set_altitude(altitude)
+    def set_instrument(self, depth, pressure, altitude, sv, sv_avg):
+        #this method is how acquisition data gets delivered to the presentation layer
+        #depth
+        
+        if(depth == None):
+            depth = 0
+        self.instrument.set_depth(depth)
+        self._set_instrument_depth(depth)
 
-    def set_pressure(self, pressure):
+        #pressure
         self.instrument.pressure = pressure
 
-    def set_instrument_depth(self, depth_m):
-        self.instrument.set_depth(depth_m)
+        #altitude
+        self.instrument.altimeter.set_altitude(altitude)
+
+        #sv
+        self.instrument.sound_velocity = sv
+
+        #sv_avg
+        self.instrument.average_sound_velocity = sv_avg
+
+    def _set_instrument_depth(self, depth_m):
         #get the tripline at or above the current instrument depth
         new_tripline = self.triplines.get_last_tripline_depth(depth_m)
         tripline_changed = False
         #check if new tripline is different than the active tripline
         if(new_tripline != self.triplines.active_tripline):
-            console.dhtb_console.add_message("hit tripline")
+            console.dhtb_console.add_debug("hit tripline")
             tripline_changed = True
         
         #redraw the screen if changed

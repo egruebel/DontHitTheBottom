@@ -13,7 +13,7 @@ class CnvFileParameter():
         self.qualifier = qualifier
         self.exists_in_file = False
         self.column_index = int
-        self.value = float
+        self.value = None
 
     def __str__(self):
         return self.name
@@ -21,9 +21,10 @@ class CnvFileParameter():
 
 class CnvFilePlayback(IODevice):
 
-    def __init__(self, filepath, playback_speed, callback):
+    def __init__(self, filepath, playback_speed, receive_callback, connection_callback):
         self.filepath = filepath
-        self.callback = callback
+        self.receive_callback = receive_callback
+        self.connection_callback = connection_callback
         self.playback_speed = playback_speed
 
         self.simulate_echosounder = False
@@ -33,6 +34,8 @@ class CnvFilePlayback(IODevice):
         self._simulate_sv_avg = False
 
         self._acquiring = False
+        self._kill = threading.Event()
+        self._reader = threading.Thread()
 
         self.depth = CnvFileParameter('depth', AppSettings.seasave_depth_qualifier)
         self.pressure = CnvFileParameter('pressure', AppSettings.seasave_pressure_qualifier)
@@ -58,9 +61,28 @@ class CnvFilePlayback(IODevice):
             'bottom_depth_sv': self.bottom_depth_sv
         }
      
-    @property
-    def acquiring(self):
+    def acquiring(self, status = True):
+        if(self._acquiring != status):
+            #the state of the IO has changed
+            self._acquiring = status
+            #there's been a disconnect set all of the output params to their defaults
+            if(status == False):
+                self.set_defaults()
+                self.receive_callback(self.depth.value, self.pressure.value, self.altitude.value, self.sv.value, self.sv_avg.value)
+            self.connection_callback(status)
         return self._acquiring
+    
+    def kill(self):
+        self.acquiring(False)
+        #this will kill the read thread so we can dispose of the object
+        self._kill.set()
+        #this will block until the thread is released
+        self._reader.join()
+        self.acquiring(False)
+
+    def set_defaults(self):
+        for key, field in self.fields.items():
+            field.value = None
 
     def initialize_field(self, line):
         #Sea-bird cnv files name their variables in the header like so: "# name 3 = prDM: Pressure, Digiquartz [db]"
@@ -87,11 +109,13 @@ class CnvFilePlayback(IODevice):
             sv_count = 0
             #header = []
             for line in f:
+                if(self._kill.is_set()):
+                    return
                 if(line == '*END*\n'):
                     begin_reading = True
                     continue
                 if(begin_reading):
-                    self._acquiring = True
+                    self.acquiring()
                     read_row += 1
                     dat = line.split()
                     self.depth.value = float(dat[self.depth.column_index])
@@ -122,12 +146,13 @@ class CnvFilePlayback(IODevice):
                     else:
                         self.sv_avg.value = 1500
 
-                    self.callback(self.depth.value, self.pressure.value, self.altitude.value, self.sv.value, self.sv_avg.value)
+                    self.receive_callback(self.depth.value, self.pressure.value, self.altitude.value, self.sv.value, self.sv_avg.value)
                     time.sleep(self.playback_speed)
 
             else:
                 # No more lines to be read from file
-                self._acquiring = False
+                self.acquiring(False)
+                self.disconnect_callback()
 
         return
                 
@@ -199,8 +224,8 @@ class CnvFilePlayback(IODevice):
             
     def begin_receive(self):
         #start a new thread and pump out data to the callback
-        x = threading.Thread(target=self.playback_loop, args = ())
-        x.start()
+        self._reader = threading.Thread(target=self.playback_loop, args = ())
+        self._reader.start()
 
     @staticmethod
     def chenmillero_seabird(p0, t, s):

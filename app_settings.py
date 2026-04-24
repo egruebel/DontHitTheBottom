@@ -38,12 +38,13 @@ class AppSettings:
     countdown_distance_m = 30 #altitude from the bottom where the countdown begins.
     console_display_time = 4 #number of seconds to display console messages
 
-    #settings for troubleshooting
+    #settings for troubleshooting, draws extra stuff
     draw_triplines = False #draw the dotted triplines that trigger a zoom in/out event
     draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
     draw_screen_top = False #draw the meters at screen top
     draw_horizon = False #draw the calculated horizon position
     draw_params = True #draw misc calculated parameters for troubleshooting
+    draw_debug_messages = True #shows console debug messages
        
     #001 hit the bottom (for real)
     #005 is deep with altim issue
@@ -54,8 +55,9 @@ class AppSettings:
     playback_file = "test_casts/EN695_003_test.cnv"
     playback_speed = .01 #seconds to pause between cnv file line scans, larger number = slower
     
+    #echosounder settings
     echosounder_udp_port = 16008 #UDP broadcast port to listen for NMEA
-    echosounder_default_sv = 1505 #sound velocity in meters/sec
+    echosounder_default_sv = 1500 #sound velocity in meters/sec
     echosounder_sv_correction = True #correct echosounder reading using the average sv from the CTD
     echosounder_nmea_depth_index = 6 #NMEA comma index of the water depth in meters
     echosounder_nmea_keeldepth_index = 8 #NMEA comma index of the vessel keel depth

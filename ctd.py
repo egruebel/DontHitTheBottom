@@ -4,16 +4,11 @@ from enum import Enum
 from app_settings import AppSettings
 import console
 
-#class WaterColumn(Enum):
-    #FULL = 1
-    #MID = 2
-    #LOW = 3
-
 class Altimeter:
 
     def __init__(self):
-        self.altitude = 0.0
-        self.filtered_altitude = 0.0
+        self.altitude = None
+        self.filtered_altitude = None
         self.quality = 0
         self.is_tracking = False
         self.raw_altitude_history = []
@@ -22,16 +17,23 @@ class Altimeter:
         self._quality_window = []
         self.blanking_range = AppSettings.altimeter_blanking_range_m
         self.max_range = AppSettings.altimeter_max_range_m
-        self.default_sound_velocity = AppSettings.altimeter_default_sv
-
-        #todo logic to decide when to display vs when to use altimeter
-        #two or three complete flushes of the averaging buffer
+        #self.default_sound_velocity = AppSettings.altimeter_default_sv
 
     def set_altitude(self, altitude):
 
-        self._raw_window.append(altitude)
-        self.raw_altitude_history.append(altitude) #todo dont forget to trim this when it's not displayed
+        self.raw_altitude_history.append(altitude)
         self.altitude = altitude
+
+        if(altitude == None):
+            #setting to none means that the instrument stopped acquiring. do some cleanup
+            self._raw_window = []
+            self._filtered_window = []
+            self._quality_window = []
+            self.blanking_range = AppSettings.altimeter_blanking_range_m
+            self.is_tracking = False
+            return
+
+        self._raw_window.append(altitude)
 
         filter_window_full = False
         if(len(self._raw_window) >= AppSettings.altimeter_filtering_window):
@@ -43,7 +45,7 @@ class Altimeter:
         mad = statistics.mean(distances)
         
         #if dataset is tight, use it. Otherwise correct up to n values and see if the messiness improves.
-        corrections = 1
+        corrections = 1 #allow for one datapoint to be thrown out
         raw_copy = self._raw_window.copy()
         filtered = False
         while(filter_window_full and mad > 10 and corrections > 0):
@@ -53,7 +55,7 @@ class Altimeter:
             #remove it
             raw_copy.pop(max_index)
             distances.pop(max_index)
-            #recalculate mad
+            #recalculate new mad
             mad = statistics.mean(distances)
             filtered = True
             corrections -= 1
@@ -76,18 +78,20 @@ class Altimeter:
             #data is messy or not in range
             self.quality = 1
 
+        #keep track of historic quality
         self._quality_window.append(self.quality)
+
+        #evaluate whether altimeter quality is where it needs to be to start using it as a depth source
         if(1 not in self._quality_window):
             if(not self.is_tracking):
                 console.dhtb_console.add_message('altimeter tracking on')
                 self.is_tracking = True
             if(self.filtered_altitude <= AppSettings.altimeter_reliable_range_m):
                 self.blanking_range = 0
-                #console.dhtb_console.add_message('minumum altimeter range is now 0m')
             else:
                 self.blanking_range = AppSettings.altimeter_blanking_range_m
-                #console.dhtb_console.add_message('minumum altimeter range is now ' + str(self.blanking_range))
         else:
+            #there's bad altimeter data so turn tracking off
             if(self.is_tracking):
                 console.dhtb_console.add_message('altimeter tracking off')
                 self.is_tracking = False
@@ -106,16 +110,11 @@ class CTD:
         self.depth = 0
         self.history = []
         self.average_sound_velocity = AppSettings.altimeter_default_sv
-        self.instantaneous_sound_velocity = AppSettings.altimeter_default_sv
+        self.sound_velocity = AppSettings.altimeter_default_sv
         self.pressure = 0
         self.altimeter = Altimeter()
         self.height_px = AppSettings.ctd_min_height_px
         self.width_px = self.height_px * .6
-        self.angle = 0.0
-        self.rotate = True
-        self.altimeter_correction = False
-        #self.altimeter_default_sound_velocity = AppSettings.altimeter_default_sv
-        #self.altimeter_correction = AppSettings.altimeter_sv_correction
         self.image = pygame.image.load(AppSettings.ctd_image).convert_alpha()
         self.image_scaled = pygame.image.load(AppSettings.ctd_image).convert_alpha()
         

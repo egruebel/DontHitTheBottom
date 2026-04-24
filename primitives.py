@@ -62,6 +62,8 @@ def render_text(text, x_pos, y_pos, color, screen, font_adjust = 0):
     return ((w_max * .75, s[1] * .75, x_pos, y_pos))
 
 def float2str(num):
+    if(num == None):
+        return str(num)
     return f'{num:.1f}'
 
 def draw_horizontal_line(surface, y_pos, color, dashcount = 0):
