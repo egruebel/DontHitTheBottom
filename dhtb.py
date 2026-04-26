@@ -115,6 +115,8 @@ while not done:
             viewport.resize()
             screen = pygame.display.set_mode((window.width_px, window.height_px), pygame.RESIZABLE)
 
+    #it's important that data is delivered to the viewengine in the game loop for thread safety
+    #acqdevices run on parallel threads and the screen needs to be drawn linearly
     viewengine.set_instrument(acq_device.instrument_depth, 
                               acq_device.instrument_pressure, 
                               acq_device.instrument_altitude, 
@@ -130,7 +132,7 @@ while not done:
     #draw the ship image
     shx = viewport.ship_image.get_width() / 2
     shy = viewport.ship_image.get_height()
-    draw_threaded_surface(viewport.ship_image,(window.horizontal_center - shx, viewport.get_background_padding() - shy))
+    draw_threaded_surface(viewport.ship_image, (window.horizontal_center - shx, viewport.get_background_padding() - shy))
 
     if(AppSettings.playback_mode):
         if(speed_button.draw(screen)):
@@ -143,9 +145,9 @@ while not done:
         if(reset_button.draw(screen)):
             #first kill the file reader thread
             acq_device.io_device.kill()
-            #then refresh the IOController
-            #acq_device = IOController()
             console.dhtb_console.add_message('Restarting file playback')
+            #todo this throws an error resizing the bg image
+            #acq_device.start_io()
 
     ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
@@ -169,7 +171,7 @@ while not done:
     draw_raw_altimeter_history()
 
     #draw the instrument if it's acquiring
-    if(acq_device.io_device._acquiring):
+    if(acq_device.io_device.acquiring):
         screen.blit(viewengine.instrument.image_scaled, ((window.horizontal_center) - (viewengine.instrument.width_px / 2),ctd_ypos, viewengine.instrument.width_px, viewengine.instrument.height_px))
         #draw instrument depth value
         wd = render_text(float2str(viewengine.instrument.depth) + 'm', (window.horizontal_center) + viewengine.instrument.width_px, ctd_ypos, Color.LIGHTBLUE, screen, 20)
@@ -223,7 +225,8 @@ while not done:
     #start y position 35px from the screen top
     cyp = 80
     for message in console.dhtb_console.message_queue:
-        line_offset = render_text(message[0], 5, cyp, Color.WHITE, screen, -18)
+        line_offset = render_text(message.text, 5, cyp, message.color, screen, -18)
+        #line_offset = render_text(message[0], 5, cyp, Color.WHITE, screen, -18)
         cyp += line_offset[1]
 
     if AppSettings.draw_screen_top:
@@ -243,7 +246,7 @@ while not done:
             'inst_depth ' + (float2str(acq_device.instrument_depth)),
             'inst_pressure ' + (float2str(acq_device.instrument_pressure)),
             'inst_altitude ' + (float2str(acq_device.instrument_altitude)),
-            'acquiring ' + str(acq_device.io_device._acquiring)
+            'acquiring ' + str(acq_device.io_device.acquiring)
         ]
         render_text(values, 0, yp, Color.WHITE,screen, -20)
 

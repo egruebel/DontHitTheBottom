@@ -43,6 +43,7 @@ class Color():
     BLUE = [0, 204, 255]
     LIGHTBLUE = [204, 255, 255]
     YELLOW = [255, 255, 153]
+    RED = [255, 0, 0]
     
 def render_text(text, x_pos, y_pos, color, screen, font_adjust = 0):
     vertical_offset = 0

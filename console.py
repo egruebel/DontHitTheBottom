@@ -1,5 +1,6 @@
 from console_controller import RoundRobinConsole
 from enum import Enum
+from datetime import datetime
 
 class MessageType(Enum):
     INFO = 0

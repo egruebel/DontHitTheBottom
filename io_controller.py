@@ -32,7 +32,7 @@ class IOController():
         
     def __init__(self):
         self.echosounder = EchoSounder(AppSettings.echosounder_udp_port, self.echo_receive_callback, self.echo_connect_callback)
-        #self.io_device
+        self.io_device = None
         self._watchdog_thread = threading.Thread()
         self.echosounder_depth = AppSettings.initial_water_depth
         self.echosounder_sv = AppSettings.echosounder_default_sv
@@ -41,6 +41,9 @@ class IOController():
         self.instrument_altitude = 0
         self.instrument_sv = 1500
         self.instrument_sv_average = 1500
+        self.start_io()
+
+    def start_io(self):
         if(AppSettings.playback_mode):
             self.io_device = CnvFilePlayback(AppSettings.playback_file, AppSettings.playback_speed, self.io_device_receive_callback, self.io_device_connect_callback)
             self.io_device.validate_file()
@@ -51,5 +54,6 @@ class IOController():
             self.io_device = SeasaveApi(AppSettings.seasave_ip, AppSettings.seasave_port, self.io_device_callback)
             self.echosounder.begin_receive()
             self.io_device.begin_receive()
+
 
     

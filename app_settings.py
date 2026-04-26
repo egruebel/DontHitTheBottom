@@ -39,7 +39,7 @@ class AppSettings:
     console_display_time = 4 #number of seconds to display console messages
 
     #settings for troubleshooting, draws extra stuff
-    draw_triplines = False #draw the dotted triplines that trigger a zoom in/out event
+    draw_triplines = True #draw the dotted triplines that trigger a zoom in/out event
     draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
     draw_screen_top = False #draw the meters at screen top
     draw_horizon = False #draw the calculated horizon position

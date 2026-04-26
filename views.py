@@ -137,6 +137,7 @@ class ViewPort:
 
     def _scale_background_images(self):
         top_m = self.screen_top_meters
+        #screen top meters can be less than zero if the sky is showing
         if(self.screen_top_meters < 0):
             top_m = 0
         #calc the window px per meter which is different than the current viewport px per meter depending on ceiling
@@ -203,8 +204,8 @@ class ViewEngine:
 
     def set_instrument(self, depth, pressure, altitude, sv, sv_avg):
         #this method is how acquisition data gets delivered to the presentation layer
+
         #depth
-        
         if(depth == None):
             depth = 0
         self.instrument.set_depth(depth)

@@ -4,7 +4,7 @@ class IODevice(ABC):
     acquiring = False
 
     @abstractmethod
-    def acquiring(self):
+    def _acquiring(self):
         pass
 
     @abstractmethod

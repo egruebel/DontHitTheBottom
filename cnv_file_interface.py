@@ -33,7 +33,7 @@ class CnvFilePlayback(IODevice):
         self._simulate_sv = False
         self._simulate_sv_avg = False
 
-        self._acquiring = False
+        self.acquiring = False
         self._kill = threading.Event()
         self._reader = threading.Thread()
 
@@ -61,24 +61,24 @@ class CnvFilePlayback(IODevice):
             'bottom_depth_sv': self.bottom_depth_sv
         }
      
-    def acquiring(self, status = True):
-        if(self._acquiring != status):
+    def _acquiring(self, status = True):
+        if(self.acquiring != status):
             #the state of the IO has changed
-            self._acquiring = status
+            self.acquiring = status
             #there's been a disconnect set all of the output params to their defaults
             if(status == False):
                 self.set_defaults()
                 self.receive_callback(self.depth.value, self.pressure.value, self.altitude.value, self.sv.value, self.sv_avg.value)
             self.connection_callback(status)
-        return self._acquiring
+        return self.acquiring
     
     def kill(self):
-        self.acquiring(False)
+        self._acquiring(False)
         #this will kill the read thread so we can dispose of the object
         self._kill.set()
         #this will block until the thread is released
         self._reader.join()
-        self.acquiring(False)
+        self._acquiring(False)
 
     def set_defaults(self):
         for key, field in self.fields.items():
@@ -115,7 +115,7 @@ class CnvFilePlayback(IODevice):
                     begin_reading = True
                     continue
                 if(begin_reading):
-                    self.acquiring()
+                    self._acquiring()
                     read_row += 1
                     dat = line.split()
                     self.depth.value = float(dat[self.depth.column_index])
@@ -151,7 +151,7 @@ class CnvFilePlayback(IODevice):
 
             else:
                 # No more lines to be read from file
-                self.acquiring(False)
+                self._acquiring(False)
                 self.disconnect_callback()
 
         return

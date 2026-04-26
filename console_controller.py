@@ -2,6 +2,7 @@ from app_settings import AppSettings
 from datetime import datetime
 import threading
 import time
+import primitives
 #from enum import Enum
 
 #class MessageType(Enum):
@@ -10,6 +11,22 @@ import time
 #    ERROR = 2
 #    DEBUG = 3
 
+class ConsoleMessage:
+
+    def __init__(self, text, type):
+        self.text = text
+        self.type = type
+        self.timestamp = datetime.now()
+
+    @property
+    def color(self):
+        if(self.type == 0):
+            return primitives.Color.RED
+        elif(self.type == 1):
+            return primitives.Color.YELLOW
+        else:
+            return primitives.Color.WHITE
+
 class RoundRobinConsole:
 
     def __init__(self):
@@ -17,30 +34,25 @@ class RoundRobinConsole:
 
     def add_message(self, message):
         #[message text, message type, timestamp]
-        self.message_queue.append([message, 0, datetime.now()])
+        self.message_queue.append(ConsoleMessage(message, 0))
+        #self.message_queue.append([message, 0, datetime.now()])
 
     def add_warning(self, message):
-        self.message_queue.append([message, 1, datetime.now()])
+        self.message_queue.append(ConsoleMessage(message, 1))
+        #self.message_queue.append([message, 1, datetime.now()])
 
     def add_error(self, message, details):
-        self.message_queue.append([message, 2, datetime.now()])
+        self.message_queue.append(ConsoleMessage(message, 2))
+        #self.message_queue.append([message, 2, datetime.now()])
 
     def add_debug(self, message):
-        self.message_queue.append([message, 3, datetime.now()])
+        self.message_queue.append(ConsoleMessage(message, 3))
+        #self.message_queue.append([message, 3, datetime.now()])
 
     def console_loop(self):
         while(True):
-            #this needs to be done in 2 parts since you cant iterate an array that youre deleting from
-            delete_list = []
-            for m in range(len(self.message_queue)):
-                if((datetime.now() - self.message_queue[m][2]).seconds > AppSettings.console_display_time):
-                    delete_list.append(m)
-
-            delete_list.reverse()
-
-            for i in delete_list:
-                self.message_queue.pop(i)
-
+            now = datetime.now()
+            self.message_queue = [x for x in self.message_queue if ((now - x.timestamp).seconds < AppSettings.console_display_time)]
             time.sleep(AppSettings.console_display_time)
 
     def start_console(self):

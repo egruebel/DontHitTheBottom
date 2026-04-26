@@ -19,7 +19,7 @@ class SeasaveApi(IODevice):
 
         self.field_list = []
         self.connected = False
-        self._acquiring = False
+        self.acquiring = False
         self.manual_disconnect = False
         self.buffer_size = 4000 #4kb receive buffer
         self.socket_timeout = 10 #seconds
@@ -39,23 +39,23 @@ class SeasaveApi(IODevice):
 
         self.set_defaults()
 
-    def acquiring(self, status = True):
-        if(self._acquiring != status):
+    def _acquiring(self, status = True):
+        if(self.acquiring != status):
             #the state of the IO has changed
-            self._acquiring = status
+            self.acquiring = status
             #there's been a disconnect set all of the output params to their defaults
             if(status == False):
                 self.set_defaults()
                 self.receive_callback(self.depth, self.pressure, self.altitude, self.sv, self.sv_average)
             self.connection_callback(status)
-        return self._acquiring
+        return self.acquiring
     
     def kill(self):
         #this will kill the read thread so we can dispose of the object
         self._kill.set()
         #this will block until the thread is released
         self._reader.join()
-        self.acquiring(False)
+        self._acquiring(False)
 
     def set_defaults(self):
         self.depth = None
@@ -129,17 +129,17 @@ class SeasaveApi(IODevice):
                         raise Exception("error in seasave acquisition, incomplete data received")
                     seasave_data += sock.recv(self.buffer_size)
                 #it's important that these two methods don't hide exceptions, so no try/except blocks
-                self.acquiring(True)
+                self._acquiring(True)
                 self.update_field_list(seasave_data)
                 self.deliver_data()
         except socket.timeout as e:
-            self.acquiring(False)
+            self._acquiring(False)
             #timeout is likely because the seasave is not actively acquiring
             console.dhtb_console.add_warning("seasave connection timed out")
             self.manual_disconnect = True
             #self.close_socket(sock)
         except Exception as e:
-            self.acquiring(False)
+            self._acquiring(False)
             console.dhtb_console.add_error("error in seasave receive loop", e)
 
     def connect(self):

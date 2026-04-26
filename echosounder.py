@@ -12,7 +12,7 @@ class EchoSounder(IODevice):
         self.port = broadcast_port
         self.receive_callback = receive_callback
         self.connection_callback = connection_callback
-        self._acquiring = False
+        self.acquiring = False
         self._kill = threading.Event()
         self._reader = threading.Thread()
 
@@ -26,23 +26,23 @@ class EchoSounder(IODevice):
         # Enable broadcasting mode
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    def acquiring(self, status = True):
-        if(self._acquiring != status):
+    def _acquiring(self, status = True):
+        if(self.acquiring != status):
             #the state of the IO has changed
-            self._acquiring = status
+            self.acquiring = status
             #there's been a disconnect set all of the output params to their defaults
             if(status == False):
                 self.set_defaults()
                 self.receive_callback(self.depth, self.keel_depth, self.sound_velocity)
             self.connection_callback(status)
-        return self._acquiring
+        return self.acquiring
     
     def kill(self):
         #this will kill the read thread so we can dispose of the object
         self._kill.set()
         #this will block until the thread is released
         self._reader.join()
-        self.acquiring(False)
+        self._acquiring(False)
 
     def set_defaults(self):
         self.depth = None
@@ -51,12 +51,12 @@ class EchoSounder(IODevice):
 
     def sim(self, rand_coeff, sounding_interval_s):
         while not self._kill.is_set():
-            self.acquiring(True)
+            self._acquiring(True)
             #add a random value between -X and +X to make the bottom change
             self.depth = self.depth + random.uniform((-1 * rand_coeff), rand_coeff)
             self.receive_callback(self.depth, self.keel_depth, self.sound_velocity)
             time.sleep(sounding_interval_s)
-        self.acquiring(False)
+        self._acquiring(False)
         return
             
     def start_simulate(self, start_depth_m, rand_coeff, sounding_interval_s):
@@ -73,10 +73,10 @@ class EchoSounder(IODevice):
             try:
                 data,address = self.client.recvfrom(4000)
             except socket.timeout as e:
-                self.acquiring(False)
+                self._acquiring(False)
                 console.dhtb_console.add_message('echosounder timeout')
             except Exception as e:
-                self.acquiring(False)
+                self._acquiring(False)
                 console.dhtb_console.add_error("exception in echosounder", e)
             else:
                 try:
@@ -96,10 +96,10 @@ class EchoSounder(IODevice):
                     self.keel_depth = float(self.keel_depth)
                     self.sound_velocity = int(self.sound_velocity)
                     #if you're here the data looks good, send it
-                    self.acquiring()
+                    self._acquiring()
                     self.receive_callback(self.depth, self.keel_depth, self.sound_velocity)
                 except Exception as e:
-                    self.acquiring(False)
+                    self._acquiring(False)
                     console.dhtb_console.add_error("exception in echosounder", e)
             time.sleep(.2)
 
