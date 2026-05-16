@@ -20,9 +20,9 @@ pygame.display.set_caption(AppSettings.title)
 scroll_speed = AppSettings.scroll_speed
 
 #these three little guys are the main objects that control the application
-window = ViewWindow(default_size)
-viewengine = ViewEngine(window)
-viewport = viewengine.viewport
+window = ViewWindow(default_size) #represents the entire window whether or not it's zoomed in
+viewengine = ViewEngine(window) #controls all interactions and changes in the display
+viewport = viewengine.viewport # represents the currently displayed section of the water column, the zoomed in part
 
 #calling this resize event on startup makes sure that images are scaled and placed correctly before data acquisition
 viewport.resize()
@@ -147,23 +147,21 @@ while not done:
             acq_device.io_device.kill()
             console.dhtb_console.add_message('Restarting file playback')
             #todo this throws an error resizing the bg image
-            #acq_device.start_io()
+            acq_device.start_io()
 
     ctd_ypos = viewport.get_ypos_px(viewengine.instrument.depth) - viewengine.instrument.height_px
    
     #draw transition triplines
     if AppSettings.draw_triplines:
         for tl in viewengine.triplines.depth_triplines:
-            if(tl > viewengine.instrument.depth):
-
+            if(tl > viewengine.viewport.screen_top_meters):
                 tripline_y_pos = viewport.get_ypos_px(tl)
                 draw_horizontal_line(screen, tripline_y_pos, Color.YELLOW, 60)
-                #next_depth = viewport.triplines.get_next_tripline_depth(viewport.instrument.depth)
-                trip_label_a = ''
+                trip_label = ''
                 if(viewengine.seabed.water_depth != None):
-                    trip_label_a = str(int(viewengine.seabed.water_depth - tl)) + "m from bottom"
+                    trip_label = str(int(viewengine.seabed.water_depth - tl)) + "m from bottom"
                 trip_label_b = str(tl) + "m deep"
-                render_text([trip_label_a, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -20)
+                render_text([trip_label, trip_label_b], 0, tripline_y_pos, Color.YELLOW, screen, -20)
     
     #draw history
     draw_cast_history()
@@ -181,7 +179,6 @@ while not done:
     if(not viewengine.seabed.water_depth == None):
         depth_source_text_color = Color.ORANGE
         depth_source_text = ""
-        #depth_source_subtext = ""
         if (viewengine.seabed.depth_source == DepthSource.ECHO):
             depth_source_text =  "Echosounder"
             depth_source_text_color = AppSettings.echosounder_color
@@ -191,7 +188,7 @@ while not done:
         
         str_depth_val = float2str(viewengine.seabed.water_depth) + "m " 
     
-        depth_text_ypos = viewport.get_ypos_px(viewengine.seabed.water_depth_upper_threshold + (viewengine.seabed.depth_padding/2))
+        depth_text_ypos = window.height_px - 115 #viewport.get_ypos_px(viewengine.seabed.water_depth_lower_threshold - 50)
         depth_text_xpos = (window.horizontal_center) + viewengine.instrument.width_px
         depth_text_offset = render_text(str_depth_val, depth_text_xpos, depth_text_ypos, depth_source_text_color, screen, 20)
         depth_text_offset = render_text(depth_source_text, depth_text_xpos, depth_text_ypos + (depth_text_offset[1]), depth_source_text_color, screen, -5)
@@ -225,8 +222,7 @@ while not done:
     #start y position 35px from the screen top
     cyp = 80
     for message in console.dhtb_console.message_queue:
-        line_offset = render_text(message.text, 5, cyp, message.color, screen, -18)
-        #line_offset = render_text(message[0], 5, cyp, Color.WHITE, screen, -18)
+        line_offset = render_text(message.text, 5, cyp, message.color, screen, -20)
         cyp += line_offset[1]
 
     if AppSettings.draw_screen_top:

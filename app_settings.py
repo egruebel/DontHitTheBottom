@@ -4,7 +4,8 @@ class AppSettings:
     initial_water_depth = 100 #default water depth when application is started before any inputs from CTD or echosounder
     tripline_jitter_m = 3 #prevents flapping by raising/lowering the tripline by x meters once the ctd has passed
     bottom_window_m = 30 #the altitude from the bottom where the display is fully zoomed in for situational awareness
-    bottom_padding_coefficient = .14 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
+    bottom_padding = 10
+    #bottom_padding_coefficient = .14 #larer number adds more padding to the bottom depth so the screen doesn't resize every update from the echosounder
     horizontal_center = .7 #where the CTD is shown in relation to the left side of the screen in %
     surface_padding_coefficient = .06 #size of the sky at the surface in % of the total meters per pixel of the screen
     
@@ -39,11 +40,11 @@ class AppSettings:
     console_display_time = 4 #number of seconds to display console messages
 
     #settings for troubleshooting, draws extra stuff
-    draw_triplines = True #draw the dotted triplines that trigger a zoom in/out event
+    draw_triplines = False #draw the dotted triplines that trigger a zoom in/out event
     draw_seabed_window = False #draw the high and low threshold where the screen gets redrawn due to seafloor change
     draw_screen_top = False #draw the meters at screen top
     draw_horizon = False #draw the calculated horizon position
-    draw_params = True #draw misc calculated parameters for troubleshooting
+    draw_params = False #draw misc calculated parameters for troubleshooting
     draw_debug_messages = True #shows console debug messages
        
     #001 hit the bottom (for real)
@@ -52,7 +53,7 @@ class AppSettings:
     #003 is nice medium case demo
     #004 has tripline adjustment issue
     playback_mode = True
-    playback_file = "test_casts/EN695_003_test.cnv"
+    playback_file = "test_casts/skq202412s_079_1db.cnv"
     playback_speed = .01 #seconds to pause between cnv file line scans, larger number = slower
     
     #echosounder settings

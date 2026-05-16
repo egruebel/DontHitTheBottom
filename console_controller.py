@@ -20,10 +20,10 @@ class ConsoleMessage:
 
     @property
     def color(self):
-        if(self.type == 0):
-            return primitives.Color.RED
-        elif(self.type == 1):
+        if(self.type == 1):
             return primitives.Color.YELLOW
+        elif(self.type == 2):
+            return primitives.Color.RED
         else:
             return primitives.Color.WHITE
 

@@ -5,7 +5,6 @@ from ctd import CTD
 from enum import Enum
 import threading
 import time
-import math
 import console
 
 class DepthSource(Enum):
@@ -33,10 +32,10 @@ class Seabed:
     def __init__(self, initial_depth_m, initial_ceiling_m, on_padding_changed = None):
         self.water_depth = initial_depth_m 
         self._on_padding_changed = on_padding_changed
-        self.depth_padding = self._get_water_depth_padding(initial_ceiling_m)
+        #self.depth_padding = self._get_water_depth_padding(initial_ceiling_m)
         self.water_depth_upper_threshold = 0
         self.water_depth_lower_threshold = 0
-        self._set_water_depth_thresholds()
+        self.set_thresholds(initial_ceiling_m)
         self.history = []
         self.sound_velocity = AppSettings.echosounder_default_sv
         self.depth_source = DepthSource.NONE
@@ -51,21 +50,22 @@ class Seabed:
         if(depth_m == None):
             return
         if(self.water_depth > self.water_depth_lower_threshold) or (self.water_depth < self.water_depth_upper_threshold):
-            self.adjust_padding(view_window_ceiling_m)
-            if(self._on_padding_changed): 
+            self.set_thresholds(view_window_ceiling_m)
+            if(self._on_padding_changed):
+                #call the changed event
                 self._on_padding_changed(self.water_depth_lower_threshold, self.water_depth_upper_threshold)
             
-    def adjust_padding(self, view_window_ceiling_m):
-        self.depth_padding = self._get_water_depth_padding(view_window_ceiling_m)
-        self._set_water_depth_thresholds()
-
-    def _set_water_depth_thresholds(self):
-        self.water_depth_upper_threshold = int(self.water_depth - self.depth_padding)
-        self.water_depth_lower_threshold = int(self.water_depth + (self.depth_padding))
-
-    def _get_water_depth_padding(self, view_window_ceiling_m):
-        return (self.water_depth - view_window_ceiling_m) * AppSettings.bottom_padding_coefficient
+    def set_thresholds(self, view_window_ceiling_m):
+        self._set_upper_threshold()
+        self._set_lower_threshold(view_window_ceiling_m)
         
+    def _set_upper_threshold(self):
+        self.water_depth_upper_threshold = int(self.water_depth - AppSettings.bottom_padding)
+    
+    def _set_lower_threshold(self, view_window_ceiling_m):
+        self.water_depth_lower_threshold = int(self.water_depth + ((self.water_depth - view_window_ceiling_m) * .1))
+        
+
 class ViewPort:
 
     px_per_meter = 1.0
@@ -227,6 +227,7 @@ class ViewEngine:
         #get the tripline at or above the current instrument depth
         new_tripline = self.triplines.get_last_tripline_depth(depth_m)
         tripline_changed = False
+        
         #check if new tripline is different than the active tripline
         if(new_tripline != self.triplines.active_tripline):
             console.dhtb_console.add_debug("hit tripline")
@@ -234,64 +235,62 @@ class ViewEngine:
         
         #redraw the screen if changed
         if(tripline_changed):
-            #need to adjust both the triplines and the padding
-            #first approximate the new window height #todo is there a more precise way to do this?
-            self.seabed.adjust_padding(new_tripline)
-
             #this will trigger a redraw
-            #self.triplines.set_triplines(self.seabed.water_depth_upper_threshold, self.instrument.depth)
-            self.triplines.set_triplines(self.seabed.water_depth, self.instrument.depth)
-            #self.viewport.set_top_meters(self.triplines.active_tripline)
-            self.viewport.set_top_and_bottom_meters(self.triplines.active_tripline, self.seabed.water_depth_lower_threshold)
-
+            self.seabed._set_lower_threshold(self.triplines.active_tripline)
+            self.triplines.set_triplines(self.seabed.water_depth_upper_threshold, self.instrument.depth)
+            self.viewport.set_top_and_bottom_meters(self.triplines.active_tripline - 1, self.seabed.water_depth_lower_threshold)
 
     def on_seabed_padding_changed(self, lower_threshold, upper_threshold):
-        console.dhtb_console.add_message("seabed padding changed")
-        self.viewport.set_top_and_bottom_meters(self.viewport.screen_top_meters, lower_threshold)
-        self.triplines.set_triplines(self.seabed.water_depth, self.instrument.depth)
-        #self.triplines.set_triplines(upper_threshold, self.instrument.depth)
+        console.dhtb_console.add_debug("seabed padding changed")
+        self.triplines.set_triplines(upper_threshold, self.instrument.depth)
+        self.viewport.set_top_and_bottom_meters(self.triplines.get_last_tripline_depth(self.instrument.depth) - 1, lower_threshold)
 
     def on_tripline_changed(self, new_ceiling):
         console.dhtb_console.add_message("active tripline is now " + str(new_ceiling))
-        self.viewport.set_top_and_bottom_meters(new_ceiling, self.seabed.water_depth_lower_threshold)
+        self.viewport.set_top_and_bottom_meters(new_ceiling - 1, self.seabed.water_depth_lower_threshold)
 
 class Triplines:
     
     def __init__(self, initial_water_depth_m, initial_instrument_depth_m, on_tripline_changed = None):
         self._on_tripline_changed = on_tripline_changed
+        self.depth_triplines = []
+        self.active_tripline = 0
         self.set_triplines(initial_water_depth_m, initial_instrument_depth_m)
+        
 
     def set_triplines(self, water_depth_m, instrument_depth_m):
         #get the jitter offset (prevents flapping when instrument is sitting right at the tripline)
         jitter_offset = AppSettings.tripline_jitter_m
         self.depth_triplines = []
+
+        bottom_tripline_depth = water_depth_m - (AppSettings.bottom_window_m - AppSettings.bottom_padding)
+
+        #insert the bottom tripline if the water column is deep enough
+        if(water_depth_m > bottom_tripline_depth + (2 * jitter_offset)):
+            self.depth_triplines.append(int(bottom_tripline_depth))
+    
         #the working depth is the full water column minus the defined "bottom window" where the display will be in full zoom
-        #this is the area we will generate triplines for
-        working_depth = water_depth_m - AppSettings.bottom_window_m
-
+        #this is the slice of the water column we will generate the remaining triplines for
+        #working top to bottom
         #todo fix bug where working depth is less than or close to the surface ala EN695_010_test.cnv
-
-        #insert a tripline for near-bottom operations if current water depth is x meters more than the user-defined bottom window
-        if(working_depth > AppSettings.bottom_window_m):
-            self.depth_triplines.insert(1, int(working_depth))
-        window_height = working_depth
-        last_window_top = 0
-        while(window_height > 80): #todo fix magic number 80
-            window_height = int((working_depth - last_window_top) / 2) #1500
-            trip = int(last_window_top + window_height) #3k
+        working_depth = bottom_tripline_depth #3000
+        height_remaining = working_depth
+        last_tripline_depth = 0
+        while(height_remaining > 80): #todo fix magic number 80 meters. Seems like a reasonable number to me.
+            height_remaining = int((working_depth - last_tripline_depth) / 2) #1500, 750, 375
+            trip = int(last_tripline_depth + height_remaining) #1500, 2250, 2625
             self.depth_triplines.append(trip)
-            last_window_top = trip
+            last_tripline_depth = trip #1500, 2250, 2625
         self.depth_triplines.sort()
-        #add a surface tripline that floats above the surface
+        #add a surface tripline that floats above the surface. This is how the sky is shown at the surface. 
         self._surface_padding = self.get_surface_padding(water_depth_m)
         self.depth_triplines.insert(0, self._surface_padding)
-        #subtract offset for triplines above us (shift lines up)
+        #subtract offset for triplines above the ctd (shift lines up)
         for i, val in enumerate(self.depth_triplines):
             if ((val - jitter_offset) < instrument_depth_m):
                 self.depth_triplines[i] -= jitter_offset
         self.active_tripline = self.get_last_tripline_depth(instrument_depth_m)
-        #save the water depth for the next time we calculate triplines todo why are we doing this?
-        self.water_depth_last_calc = water_depth_m
+
         #call the event
         if self._on_tripline_changed: self._on_tripline_changed(self.active_tripline)
    

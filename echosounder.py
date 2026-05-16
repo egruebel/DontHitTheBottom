@@ -82,7 +82,7 @@ class EchoSounder(IODevice):
                 try:
                     if(len(data) < 8): #todo check this more gracefully. SounderSuite still transmits empty strings when not running.
                         self.depth = None
-                        self.callback(self.depth, self.keel_depth, self.sound_velocity)
+                        self.receive_callback(self.depth, self.keel_depth, self.sound_velocity)
                         continue
                     nmea = str(data).split(',')
                     self.depth = nmea[AppSettings.echosounder_nmea_depth_index].strip()

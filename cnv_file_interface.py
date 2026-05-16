@@ -152,7 +152,7 @@ class CnvFilePlayback(IODevice):
             else:
                 # No more lines to be read from file
                 self._acquiring(False)
-                self.disconnect_callback()
+                #self.connection_callback(False)
 
         return
                 
